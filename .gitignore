@@ -5,3 +5,12 @@
 # generated figures
 output/*
 !output/.gitkeep
+
+# python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ignore smartg auxdata
+data/smartg_auxdata
