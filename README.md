@@ -1,42 +1,45 @@
-# adjeff — Article 1 companion scripts
+# Adjeff — Remote Sensing of Environment (RSE) companion scripts
 
 Companion repository for **Article 1**: *[title to be added]*.
 
-Contains the scripts that reproduce every figure in the paper, and the
-associated datasets.
+Contains the scripts that reproduce every figure in the paper, and the associated datasets. 
 
 ---
 
-## Repository structure
+## Repository structure and guidelines
+
+The structure of the repository is organized as follow.
 
 ```
-adjeff-article-1/
-├── article-scripts/
-│   ├── figure2.py          # Loss landscape — GaussGeneralPSF
-│   ├── figure3.py          # Scatter: RMSE loss vs encircled-energy radius
-│   ├── figure4.py          # rho_s predictions: GaussGeneralPSF vs Gauss-330
-│   ├── figure5.py          # rho_s predictions: KingPSF vs Gauss-330
-│   ├── figure7_17.py       # PSF sensitivity (aot, rh, wl, h, href, vza)
-│   ├── generate_article_figures.sh
-│   └── figs/               # output figures (created at runtime)
-├── data/
-│   └── ...                 # see Data section below
-├── LICENSE                 # Apache 2.0
-├── pyproject.toml
-└── README.md
+# Main folders of interest
+├── figures/
+│   ├── figure2.py                      # Script to generate figure 2
+│   ├── figure3.py                      # Script to generate figure 3
+│   ├── ...
+├── output/                             # Contains output figures
+├── data/                               # Contains data useful for figure generation
+    ├── afgl_auxdata/
+    ├── cams_aer_auxdata/
+├── pyproject.toml                      # Useful to manage pixi environments
+├── install_env                         # Simple script to install pixi (if necessary) and the project environment 
+├── makefig                             # Main script to compute figures with adjeff
+├── README.md                           # Instructions on how to use the repository
+
+
+# Not important to the user
+├── scripts/                            # Contains useful help scripts
+    ├── auxdata.py                      # Download Smart-G auxdata and add additionnal useful data
+    ├── export_smartg_auxdata.py        # Useful to export the Smart-G env variable before computation
+├── src/                                # Source modules used in the scripts
+└── LICENSE                             # Apache 2.0
+
 ```
 
----
+The scripts for figure generation are stored in ``scripts/``, and generate figure stored in ``output/``. All the data required to perform computation are stored in ``data/`` (mainly Smart-G auxiliary data, but also some pre-treated data). 
 
-## Data
+The ``pyproject.toml`` is used by pixi (or any environment manager you may want to use) in order to install the dependencies required to compute the figures. If you wish to keep it simple, simple launch the ``install_env`` script that will locally install ``pixi`` on your system and automatically install the dependencies.
 
-<!-- Describe the content of the data/ directory here.
-     Replace the example tree below with the actual structure. -->
-
-```
-data/
-└── (example — replace with your actual layout)
-```
+The ``makefig`` helps to easily compute any figure on the terminal. Keep in mind that depending on your GPU capacities, some figures may take some time to fully compute.
 
 ---
 
@@ -46,58 +49,41 @@ data/
 
 - [pixi](https://pixi.sh) ≥ 0.40
 - A CUDA 12.6-compatible GPU and driver
-- Smart-G auxiliary data — set `SMARTG_DIR_AUXDATA` before running (see below)
 
-### Install
+### Clone the project, add pixi and launch an environment
 
 ```bash
+# Clone the repository
 git clone https://github.com/walcark/adjeff-article-1.git
 cd adjeff-article-1
+
+# Install pixi
+chmod +x install_env
+./install_env
 
 # GPU environment (required for all figures)
 pixi install -e gpu
 ```
 
-To use a local development version of adjeff instead of the PyPI release,
-edit `pyproject.toml` and uncomment the local path dependency:
+### Download Smart-G auxiliary data
 
-```toml
-# adjeff = { path = "../adjeff", editable = true }
-```
-
-### Smart-G auxiliary data
+The scripts ``scripts/auxdata.py`` allows to download Smart-G auxiliary data with the same process described on the Smart-G GitHub page (https://github.com/hygeos/smartg). It can easily be launched with the following pixi command:
 
 ```bash
-export SMARTG_DIR_AUXDATA=/path/to/smartg/auxdata
+pixi run donwload_auxdata
 ```
 
----
+### Compute a figure
 
-## Generating the figures
-
-### All figures at once
+The ``makefig`` shell file allows to simply call each ``scripts/figureX.py`` file, using the following command:
 
 ```bash
-SMARTG_DIR_AUXDATA=/path/to/smartg/auxdata \
-    pixi run -e gpu figures-all
+chmod +x makefig
+
+./makefig figure2      # to compute the second figure
+./makefig figureX      # to compute the Xth figure
+./makefig              # to compute all the figures successively (quite long)
 ```
-
-Or directly:
-
-```bash
-export SMARTG_DIR_AUXDATA=/path/to/smartg/auxdata
-bash article-scripts/generate_article_figures.sh
-```
-
-### A single figure
-
-```bash
-export SMARTG_DIR_AUXDATA=/path/to/smartg/auxdata
-bash article-scripts/generate_article_figures.sh figure7
-```
-
-Available figures: `figure2`, `figure3`, `figure4`, `figure5`,
-`figure7` … `figure17`.
 
 Output files are written to `article-scripts/figs/`.
 
