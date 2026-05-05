@@ -26,8 +26,7 @@ from adjeff.core import (
     disk_image_dict,
 )
 from adjeff.modules.models.unif2surface import Unif2Surface
-from adjeff.optim import Loss, TrainingImages
-from adjeff.optim.metrics import Metric
+from adjeff.optim import Loss, Metric, TrainingImages
 from adjeff.utils import CacheStore
 
 plt.style.use(["science", "nature"])
@@ -100,8 +99,8 @@ def main() -> None:
         )
     )
 
-    fig, axes = plt.subplots(1, 3, sharey=True, figsize=(8, 3))
     tick_factor = 1.2
+    fig, axes = plt.subplots(1, 3, sharey=True, figsize=(8, 3))
 
     for idx, (ax, scene, (radius, label)) in enumerate(
         zip(axes, scenes, disk_params)
@@ -119,9 +118,6 @@ def main() -> None:
         r, v_s = sym_profile(rho_s_gt)
         _, v_unif = sym_profile(rho_unif_da)
         _, v_king = sym_profile(rho_s_king_da)
-        print(100 * "=")
-        print(v_king)
-        print(np.max(v_king))
         _, v_g330 = sym_profile(rho_s_g330_da)
 
         opts = dict(linewidth=1.3)

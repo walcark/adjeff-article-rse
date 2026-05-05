@@ -28,13 +28,12 @@ from adjeff.api import (
 )
 from adjeff.core import KingPSF, S2Band, disk_image_dict
 from adjeff.modules.models.unif2surface import Unif2Surface
-from adjeff.optim import Loss, TrainingImages
-from adjeff.optim.metrics import Metric
+from adjeff.optim import Loss, Metric, TrainingImages
 from adjeff.utils import CacheStore
 
 plt.style.use(["science", "nature"])
 
-cache= CacheStore("/tmp/adjeff-figures")
+cache = CacheStore("/tmp/adjeff-figures")
 RES_KM = 0.12
 N = 1999
 N_PH = int(1e5)
@@ -198,7 +197,7 @@ def main() -> None:
         opts = dict(linewidth=1.3)
         axes[0].plot(r, v, label=label, **opts)
         axes[1].plot(r, v_cdf, label=label, **opts)
-    
+
     axes[0].set_yscale("log")
     axes[1].set_xscale("log")
     axes[0].set_ylim(y_min, y_max)
