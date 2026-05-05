@@ -35,9 +35,9 @@ The structure of the repository is organized as follow.
 
 ```
 
-The scripts for figure generation are stored in ``scripts/``, and generate figure stored in ``output/``. All the data required to perform computation are stored in ``data/`` (mainly Smart-G auxiliary data, but also some pre-treated data). 
+The scripts for figure generation are stored in ``figures/``, and generate figures stored in ``output/``. All the data required to perform computation are stored in ``data/`` (mainly Smart-G auxiliary data, but also some pre-treated data). 
 
-The ``pyproject.toml`` is used by pixi (or any environment manager you may want to use) in order to install the dependencies required to compute the figures. If you wish to keep it simple, simple launch the ``install_env`` script that will locally install ``pixi`` on your system and automatically install the dependencies.
+The ``pyproject.toml`` is used by pixi (or any environment manager you may want to use) in order to install the dependencies required to compute the figures. If you wish to keep it simple, simply launch the ``install_env`` script that will locally install ``pixi`` on your system and automatically install the dependencies.
 
 The ``makefig`` helps to easily compute any figure on the terminal. Keep in mind that depending on your GPU capacities, some figures may take some time to fully compute.
 
@@ -57,9 +57,12 @@ The ``makefig`` helps to easily compute any figure on the terminal. Keep in mind
 git clone https://github.com/walcark/adjeff-article-1.git
 cd adjeff-article-1
 
-# Install pixi
+# Install pixi (to ~/.pixi by default)
 chmod +x install_env
 ./install_env
+
+# Or specify a custom installation directory
+./install_env /custom/path
 
 # GPU environment (required for all figures)
 pixi install -e gpu
@@ -70,12 +73,12 @@ pixi install -e gpu
 The scripts ``scripts/auxdata.py`` allows to download Smart-G auxiliary data with the same process described on the Smart-G GitHub page (https://github.com/hygeos/smartg). It can easily be launched with the following pixi command:
 
 ```bash
-pixi run donwload_auxdata
+pixi run download_auxdata
 ```
 
 ### Compute a figure
 
-The ``makefig`` shell file allows to simply call each ``scripts/figureX.py`` file, using the following command:
+The ``makefig`` shell file allows to simply call each ``figures/figureX.py`` file, using the following command:
 
 ```bash
 chmod +x makefig
@@ -85,7 +88,7 @@ chmod +x makefig
 ./makefig              # to compute all the figures successively (quite long)
 ```
 
-Output files are written to `article-scripts/figs/`.
+Output files are written to `output/`.
 
 ---
 

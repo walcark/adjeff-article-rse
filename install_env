@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Install pixi locally (if not already available) and set up the project environment.
+#
+# Usage:
+#   ./install_env              # installs pixi to ~/.pixi (default)
+#   ./install_env /custom/path # installs pixi to /custom/path
+
+set -euo pipefail
+
+PIXI_HOME="${1:-${PIXI_HOME:-$HOME/.pixi}}"
+
+if ! command -v pixi &>/dev/null; then
+    echo "pixi not found — installing to $PIXI_HOME ..."
+    curl -fsSL https://pixi.sh/install.sh | PIXI_HOME="$PIXI_HOME" bash
+    export PATH="$PIXI_HOME/bin:$PATH"
+    echo ""
+    echo "pixi installed. If future shells don't find it, add this to your shell config:"
+    echo "  export PATH=\"$PIXI_HOME/bin:\$PATH\""
+else
+    echo "pixi $(pixi --version) already installed."
+fi
+
+echo ""
+echo "Installing project environment..."
+pixi install
+
+echo ""
+echo "Done. Run commands with:  pixi run <task>"
+echo "Or open a shell with:     pixi shell"

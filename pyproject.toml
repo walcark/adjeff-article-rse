@@ -1,5 +1,5 @@
 [project]
-name = "adjeff-article-1"
+name = "adjeff-article-rse"
 version = "0.1.0"
 authors = [{ name = "walcark", email = "kevin.walcarius@gmail.com" }]
 description = "Companion scripts for Article 1 — adjacency effects in Sentinel-2 imagery."
@@ -13,7 +13,7 @@ build-backend = "hatchling.build"
 requires = ["hatchling"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/adjeff_article_1"]
+packages = ["src/adjeff_article_rse"]
 
 # ── Pixi workspace ────────────────────────────────────────────────────────────
 [tool.pixi.workspace]
@@ -21,7 +21,7 @@ channels = ["conda-forge"]
 platforms = ["linux-64"]
 
 [tool.pixi.pypi-dependencies]
-adjeff-article-1 = { path = ".", editable = true }
+adjeff-article-rse = { path = ".", editable = true }
 adjeff = ">=0.5.1"
 
 # Conda-only deps that adjeff needs but cannot declare on PyPI.
@@ -44,3 +44,4 @@ cuda = "12.6"
 # ── Tâches ───────────────────────────────────────────────────────────────────
 [tool.pixi.tasks]
 figures-all = { cmd = "bash makefig" }
+download_auxdata = { cmd = "python scripts/auxdata.py" }
