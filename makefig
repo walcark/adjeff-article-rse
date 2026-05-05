@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+# Generate figures for Article 1.
+#
+# Usage:
+#   bash makefig              # all figures
+#   bash makefig figure4      # single figure
+#
+# Requirements: SMARTG_DIR_AUXDATA must be set.
+# Run via pixi: pixi run figures-all
+#               pixi run makefig figure4   (not yet a pixi task — pass args directly)
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FIGS="$REPO_ROOT/figures"
+
+if [ -z "${SMARTG_DIR_AUXDATA:-}" ]; then
+    echo "Error: SMARTG_DIR_AUXDATA is not set." >&2
+    exit 1
+fi
+
+mkdir -p "$REPO_ROOT/output"
+
+run_figure() {
+    local fig="$1"
+    echo ">>> $fig"
+    case "$fig" in
+        figure2)  python "$FIGS/figure2.py" ;;
+        figure3)  python "$FIGS/figure3.py" ;;
+        figure4)  python "$FIGS/figure4.py" ;;
+        figure5)  python "$FIGS/figure5.py" ;;
+        figure7)
+            python "$FIGS/figure7_17.py" \
+                --figure figure7 \
+                --aot 0.1 0.3 0.5 0.7 \
+                --rh 50.0 --h 0.0 --wl 560.0 --href 2.0 \
+                --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
+                --species blackcar --remove_rayleigh
+            ;;
+        figure8)
+            python "$FIGS/figure7_17.py" \
+                --figure figure8 \
+                --aot 0.1 0.3 0.5 0.7 \
+                --rh 50.0 --h 0.0 --wl 560.0 --href 2.0 \
+                --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
+                --species sulphate --remove_rayleigh
+            ;;
+        figure9)
+            python "$FIGS/figure7_17.py" \
+                --figure figure9 \
+                --aot 0.1 0.3 0.5 0.7 \
+                --rh 95.0 --h 0.0 --wl 560.0 --href 2.0 \
+                --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
+                --species sulphate --remove_rayleigh
+            ;;
+        figure10)
+            python "$FIGS/figure7_17.py" \
+                --figure figure10 \
+                --aot 0.1 0.3 0.5 0.7 \
+                --rh 50.0 --h 0.0 --wl 560.0 --href 2.0 \
+                --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
+                --species seasalt --remove_rayleigh
+            ;;
+        figure11)
+            python "$FIGS/figure7_17.py" \
+                --figure figure11 \
+                --aot 0.4 \
+                --rh 50.0 --h 0.0 --wl 560.0 865.0 2190.0 --href 2.0 \
+                --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
+                --species blackcar --remove_rayleigh
+            ;;
+        figure12)
+            python "$FIGS/figure7_17.py" \
+                --figure figure12 \
+                --aot 0.4 \
+                --rh 50.0 --h 0.0 --wl 560.0 865.0 2190.0 --href 2.0 \
+                --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
+                --species sulphate --remove_rayleigh
+            ;;
+        figure13)
+            python "$FIGS/figure7_17.py" \
+                --figure figure13 \
+                --aot 0.4 \
+                --rh 50.0 --h 0.0 --wl 560.0 865.0 2190.0 --href 2.0 \
+                --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
+                --species seasalt --remove_rayleigh
+            ;;
+        figure14)
+            python "$FIGS/figure7_17.py" \
+                --figure figure14 \
+                --aot 0.4 \
+                --rh 50.0 --h 0.0 1.5 3.0 --wl 560.0 --href 2.0 \
+                --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
+                --species sulphate
+            ;;
+        figure15)
+            python "$FIGS/figure7_17.py" \
+                --figure figure15 \
+                --aot 0.05 \
+                --rh 50.0 --h 0.0 1.5 3.0 --wl 560.0 --href 2.0 \
+                --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
+                --species sulphate
+            ;;
+        figure16)
+            python "$FIGS/figure7_17.py" \
+                --figure figure16 \
+                --aot 0.4 \
+                --rh 50.0 --h 0.0 --wl 560.0 --href 1.0 2.0 4.0 \
+                --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
+                --species sulphate
+            ;;
+        figure17)
+            python "$FIGS/figure7_17.py" \
+                --figure figure17 \
+                --aot 0.4 \
+                --rh 50.0 --h 0.0 --wl 560.0 --href 2.0 \
+                --sza 40.0 --vza 0.0 8.0 16.0 --saa 0.0 --vaa 0.0 \
+                --species sulphate
+            ;;
+        figures22-23) python "$FIGS/figures22-23.py" ;;
+        *)
+            echo "Unknown figure: $fig" >&2
+            exit 1
+            ;;
+    esac
+}
+
+ALL_FIGURES=(
+    figure2 figure3 figure4 figure5
+    figure7 figure8 figure9 figure10 figure11 figure12 figure13
+    figure14 figure15 figure16 figure17
+    figures22-23
+)
+
+if [ $# -eq 0 ]; then
+    for fig in "${ALL_FIGURES[@]}"; do
+        run_figure "$fig"
+    done
+elif [ $# -eq 1 ]; then
+    run_figure "$1"
+else
+    echo "Usage: $0 [figureN]" >&2
+    exit 1
+fi
+
+echo "Done. Figures written to output/"
