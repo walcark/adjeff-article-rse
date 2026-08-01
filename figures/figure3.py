@@ -27,8 +27,8 @@ from adjeff.utils import CacheStore
 plt.style.use(["science", "nature"])
 
 BAND = S2Band.B03
-RES_KM = 0.12
-N = 1999
+RES_KM = 0.05
+N = 3999
 N_PH = int(1e5)
 N_SAMPLES = 8
 FIGS_DIR = Path(__file__).parent.parent / "output"

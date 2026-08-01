@@ -34,8 +34,8 @@ from adjeff.utils import CacheStore
 plt.style.use(["science", "nature"])
 
 cache = CacheStore("/tmp/adjeff-figures")
-RES_KM = 0.12
-N = 1999
+RES_KM = 0.05
+N = 3999
 N_PH = int(1e5)
 FIGS_DIR = Path(__file__).parent.parent / "output"
 

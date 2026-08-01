@@ -67,8 +67,8 @@ from adjeff.modules.models import Unif2Surface
 from adjeff.optim import Loss, Metric, TrainingImages
 from adjeff.utils import CacheStore
 
-RES_KM = 0.12
-N = 1999
+RES_KM = 0.05
+N = 3999
 FIGS_DIR = Path(__file__).parent.parent / "output"
 
 WL_TO_BAND = {
