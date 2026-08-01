@@ -122,6 +122,14 @@ run_figure() {
                 --species sulphate
             ;;
         figures22-23) python "$FIGS/figures22-23.py" ;;
+        table_aot_sensitivity)
+            python "$FIGS/table_aot_sensitivity.py" \
+                --aot-ref 0.4 --aot-delta 0.2 \
+                --wl 490.0 560.0 665.0 865.0 1610.0 2190.0 \
+                --rh 50.0 --h 0.0 --href 2.0 \
+                --sza 40.0 --vza 0.0 --saa 0.0 --vaa 0.0 \
+                --species sulphate
+            ;;
         *)
             echo "Unknown figure: $fig" >&2
             exit 1
@@ -134,6 +142,7 @@ ALL_FIGURES=(
     figure7 figure8 figure9 figure10 figure11 figure12 figure13
     figure14 figure15 figure16 figure17
     figures22-23
+    table_aot_sensitivity
 )
 
 if [ $# -eq 0 ]; then
