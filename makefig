@@ -5,6 +5,17 @@
 #   bash makefig              # all figures
 #   bash makefig figure4      # single figure
 #
+# Naming: the targets follow the file names of the manuscript, figureN.png,
+# which are two ahead of the printed figure numbers (figure14.png is printed as
+# Figure 12).  Two exceptions to keep in mind:
+#
+#   - figures22-23 writes output/figure22.png and output/figure23.png, but the
+#     manuscript stores them as figs/figure21.png and figs/figure22.png, i.e.
+#     printed Figures 20 and 21.  Copy them with a shift of one.
+#   - figure1 (TikZ), figure6 (phase functions) and the case-study imagery
+#     (figure14prim, figure18, figure18av, figure19, figure20) are built
+#     outside this repository.
+#
 # Requirements: SMARTG_DIR_AUXDATA must be set.
 # Run via pixi: pixi run figures-all
 #               pixi run makefig figure4   (not yet a pixi task — pass args directly)
@@ -89,36 +100,55 @@ run_figure() {
                 --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
                 --species seasalt --remove_rayleigh
             ;;
+        # Sweep of the aerosol height scale.  This is the last figure of the
+        # atmospheric subsection, yet --remove_rayleigh is deliberately absent,
+        # unlike figures 7 to 13: the encircled energy of the published figure
+        # matches the geometric series, molecules included, not the aerosol-only
+        # series (0.41 against 0.61 of the flux within 1 km at 560 nm).
         figure14)
             python "$FIGS/figure7_17.py" \
                 --figure figure14 \
-                --aot 0.4 \
-                --rh 50.0 --h 0.0 1.5 3.0 --wl 560.0 --href 2.0 \
-                --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
-                --species sulphate
-            ;;
-        figure15)
-            python "$FIGS/figure7_17.py" \
-                --figure figure15 \
-                --aot 0.05 \
-                --rh 50.0 --h 0.0 1.5 3.0 --wl 560.0 --href 2.0 \
-                --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
-                --species sulphate
-            ;;
-        figure16)
-            python "$FIGS/figure7_17.py" \
-                --figure figure16 \
                 --aot 0.4 \
                 --rh 50.0 --h 0.0 --wl 560.0 --href 1.0 2.0 4.0 \
                 --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
                 --species sulphate
             ;;
+        # Sweep of the ground elevation.
+        figure15)
+            python "$FIGS/figure7_17.py" \
+                --figure figure15 \
+                --aot 0.4 \
+                --rh 50.0 --h 0.0 1.5 3.0 --wl 560.0 --href 2.0 \
+                --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
+                --species sulphate
+            ;;
+        # Sweep of the viewing zenith angle.
+        figure16)
+            python "$FIGS/figure7_17.py" \
+                --figure figure16 \
+                --aot 0.4 \
+                --rh 50.0 --h 0.0 --wl 560.0 --href 2.0 \
+                --sza 40.0 --vza 0.0 8.0 16.0 --saa 0.0 --vaa 0.0 \
+                --species sulphate
+            ;;
+        # Sweep of the solar zenith angle.
         figure17)
             python "$FIGS/figure7_17.py" \
                 --figure figure17 \
                 --aot 0.4 \
                 --rh 50.0 --h 0.0 --wl 560.0 --href 2.0 \
-                --sza 40.0 --vza 0.0 8.0 16.0 --saa 0.0 --vaa 0.0 \
+                --sza 0.0 40.0 80.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
+                --species sulphate
+            ;;
+        # Ground elevation at low aerosol load.  Not a figure of the article:
+        # supports the statement of Section 3.2.2 that the dependency on the
+        # ground elevation grows as the AOT drops below 0.1.
+        elevation_low_aot)
+            python "$FIGS/figure7_17.py" \
+                --figure elevation_low_aot \
+                --aot 0.05 \
+                --rh 50.0 --h 0.0 1.5 3.0 --wl 560.0 --href 2.0 \
+                --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
                 --species sulphate
             ;;
         figures22-23) python "$FIGS/figures22-23.py" ;;

@@ -57,45 +57,26 @@ from adjeff.core import (
     ImageDict,
     KingPSF,
     PSFDict,
-    S2Band,
     SensorBand,
     disk_image_dict,
     gaussian_image_dict,
 )
-from adjeff.modules.classic import Toa2Unif
 from adjeff.modules.models import Unif2Surface
 from adjeff.optim import Loss, Metric, TrainingImages
 from adjeff.utils import CacheStore
+from adjeff_article_1.runconfig import RunConfig, parse_run
+from adjeff_article_1.shim import (
+    RADIATIVE_VARS,
+    correct,
+    radial_rmse,
+    select_scalar,
+    wl_to_band,
+)
 
 RES_KM = 0.05
 N = 3999
-FIGS_DIR = Path(__file__).parent.parent / "output"
-
-WL_TO_BAND = {
-    443.0: S2Band.B01,
-    490.0: S2Band.B02,
-    560.0: S2Band.B03,
-    665.0: S2Band.B04,
-    705.0: S2Band.B05,
-    740.0: S2Band.B06,
-    783.0: S2Band.B07,
-    842.0: S2Band.B08,
-    865.0: S2Band.B8A,
-    945.0: S2Band.B09,
-    1610.0: S2Band.B11,
-    2190.0: S2Band.B12,
-}
 
 SCALES_KM = [1.0, 5.0, 50.0]
-
-RADIATIVE_VARS = [
-    "tdir_up",
-    "tdif_up",
-    "tdir_down",
-    "tdif_down",
-    "rho_atm",
-    "sph_alb",
-]
 
 # name -> (AOT feeding the scalar terms, AOT feeding the PSF), as a
 # function of (true AOT, tile-mean AOT assumed by the correction).
@@ -143,79 +124,8 @@ def build_landscapes(
     return gauss + disks
 
 
-def at_aot(ds: xr.Dataset, aot: float) -> xr.Dataset:
-    """Return *ds* at a single AOT, with all remaining singleton dims gone."""
-    return ds.sel(aot=aot, method="nearest", drop=True).squeeze(drop=True)
 
 
-def kernel_at(psf_dict: PSFDict, band: SensorBand, aot: float) -> xr.DataArray:
-    """Return the kernel optimised for *aot*, without its combo dims."""
-    kernel = psf_dict.kernel(band)
-    return kernel.sel(aot=aot, method="nearest", drop=True).squeeze(drop=True)
-
-
-def correct(
-    ds: xr.Dataset,
-    band: SensorBand,
-    kernel: xr.DataArray,
-    aot_true: float,
-    aot_scalar: float,
-    device: str,
-) -> tuple[xr.DataArray, xr.DataArray]:
-    """Correct one landscape and return ``(rho_s_est, rho_unif)``.
-
-    The TOA reflectance is the one actually measured, i.e. simulated at
-    *aot_true*, while the 5S scalar terms are taken at *aot_scalar* and
-    the convolution uses *kernel*.  Mixing those three is what isolates
-    the error contributions.
-
-    Note that the Dataset handed to the modules deliberately carries no
-    ``rho_s``, since :class:`Unif2Surface` writes its output under that
-    name and would otherwise overwrite the ground truth.
-    """
-    measured = at_aot(ds, aot_true)
-    assumed = at_aot(ds, aot_scalar)
-    mixed = xr.Dataset(
-        {
-            "rho_toa": measured["rho_toa"],
-            **{var: assumed[var] for var in RADIATIVE_VARS},
-        }
-    )
-
-    scene = Toa2Unif()(ImageDict({band: mixed}))
-    model = Unif2Surface(
-        psf_dict=PSFDict.from_kernels({band: kernel}), device=device
-    )
-    model.eval()
-    scene = model(scene)
-    return scene[band]["rho_s"], scene[band]["rho_unif"]
-
-
-def radial_rmse(
-    pred: xr.DataArray,
-    truth: xr.DataArray,
-    mask_on: xr.DataArray,
-    device: str,
-) -> float:
-    """Radial RMSE between *pred* and *truth*, masked on *mask_on*.
-
-    The shape guard matters here: a leftover singleton dimension on one
-    of the operands would be silently broadcast by the metric and yield
-    a meaningless value rather than an error.
-    """
-    if not pred.shape == truth.shape == mask_on.shape:
-        raise ValueError(
-            f"Shape mismatch: pred {pred.shape}, truth {truth.shape}, "
-            f"mask {mask_on.shape}. Extra dimensions were not squeezed."
-        )
-    return float(
-        Metric.RMSE_RAD(
-            pred.adjeff.to_tensor().to(device),
-            truth.adjeff.to_tensor().to(device),
-            truth.adjeff.dists.to(device),
-            mask_on.adjeff.to_tensor().to(device),
-        )
-    )
 
 
 def evaluate_band(
@@ -239,13 +149,16 @@ def evaluate_band(
 
             for name, pick in CASES.items():
                 aot_scalar, aot_psf = pick(aot_true, aot_ref)
+                # The TOA reflectance is the one actually measured, at
+                # aot_true, while the 5S scalar terms are taken at
+                # aot_scalar and the kernel at aot_psf.  Mixing those
+                # three is what isolates the error contributions.
                 est, unif = correct(
-                    ds=ds,
+                    ds=select_scalar(ds, aot=aot_scalar),
                     band=band,
-                    kernel=kernel_at(psf_dict, band, aot_psf),
-                    aot_true=aot_true,
-                    aot_scalar=aot_scalar,
+                    kernel=select_scalar(psf_dict.kernel(band), aot=aot_psf),
                     device=device,
+                    rho_toa=select_scalar(ds["rho_toa"], aot=aot_true),
                 )
                 acc[name] += radial_rmse(est, truth, unif, device)
                 if name == "matched":
@@ -266,10 +179,13 @@ def evaluate_band(
 
 
 def run_band(
-    wl: float, args: argparse.Namespace, cache: CacheStore
+    wl: float,
+    args: argparse.Namespace,
+    run: RunConfig,
+    cache: CacheStore,
 ) -> list[dict[str, float]]:
     """Simulate, optimise and evaluate every AOT case for one wavelength."""
-    band = WL_TO_BAND[wl]
+    band = wl_to_band(wl)
     aots = [
         args.aot_ref - args.aot_delta,
         args.aot_ref,
@@ -291,25 +207,25 @@ def run_band(
         species=parse_species(args.species),
     )
 
-    scenes = build_landscapes(band, args.res_km, args.n)
+    scenes = build_landscapes(band, run.res_km, run.n)
     scenes = run_forward_pipeline(
-        scenes, **cfg, nr=args.nr, n_ph=args.n_ph, cache=cache
+        scenes, **cfg, nr=args.nr, n_ph=run.n_ph, cache=cache
     )
 
     model = make_model(
         Unif2Surface,
         KingPSF,
         [band],
-        res_km=args.res_km,
-        n=args.n,
+        res_km=run.res_km,
+        n=run.n,
         init_parameters={"sigma": 0.1, "gamma": 1.0},
-        device=args.device,
+        device=run.device,
     )
     psf_dict = optimize_adam_lbfgs(
         model,
         TrainingImages(images=scenes, weights=[1.0] * len(scenes)),
         Loss(Metric.RMSE_RAD),
-        device=args.device,
+        device=run.device,
     )
 
     return evaluate_band(
@@ -318,7 +234,7 @@ def run_band(
         band=band,
         aots=aots,
         aot_ref=args.aot_ref,
-        device=args.device,
+        device=run.device,
     )
 
 
@@ -346,30 +262,22 @@ def main() -> None:
         default="sulphate",
         help='Aerosol mix, e.g. "sulphate" or "sulphate:0.7,dust:0.3".',
     )
-    parser.add_argument("--res-km", type=float, default=RES_KM)
-    parser.add_argument("--n", type=int, default=N)
     parser.add_argument("--nr", type=int, default=500)
-    parser.add_argument("--n-ph", type=int, default=int(1e5))
-    parser.add_argument("--device", type=str, default="cuda")
-    parser.add_argument("--cache-dir", type=str, default="/tmp/adjeff-figures")
     parser.add_argument("--name", type=str, default="table_aot_sensitivity")
-    args = parser.parse_args()
+    run, args = parse_run(__doc__.splitlines()[0], parser)
+    run = run.resolve(n=N, res_km=RES_KM)
+    cache = CacheStore(run.cache_dir)
 
-    FIGS_DIR.mkdir(exist_ok=True)
-    cache = CacheStore(args.cache_dir)
-
-    unknown = [wl for wl in args.wl if wl not in WL_TO_BAND]
-    if unknown:
-        raise ValueError(f"No Sentinel-2 band for wavelengths {unknown}.")
-
+    wavelengths = args.wl[:1] if run.smoke else args.wl
     rows: list[dict[str, float]] = []
-    for wl in args.wl:
-        rows += run_band(wl, args, cache)
+    for wl in wavelengths:
+        rows += run_band(wl, args, run, cache)
 
     df = pd.DataFrame(rows)[COLUMNS]
 
-    csv_path = FIGS_DIR / f"{args.name}.csv"
-    tex_path = FIGS_DIR / f"{args.name}.tex"
+    run.figs_dir.mkdir(parents=True, exist_ok=True)
+    csv_path = run.figs_dir / f"{args.name}.csv"
+    tex_path = run.figs_dir / f"{args.name}.tex"
     df.to_csv(csv_path, index=False)
     df.to_latex(tex_path, index=False, float_format="%.4f")
 
