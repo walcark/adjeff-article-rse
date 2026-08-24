@@ -31,7 +31,7 @@ MARKERS = {
 
 
 def load_band(band: str) -> pd.DataFrame:
-    df = pd.read_csv(DATA_DIR / f"results_{band}.csv")
+    df = pd.read_csv(DATA_DIR / f"results_{band}_noglint.csv")
     res_unif = (df["pts_unif"] - df["pts_reel"]).abs()
     res_maja = (df["pts_maja"] - df["pts_reel"]).abs()
     res_king = (df["pts_king"] - df["pts_reel"]).abs()
@@ -70,29 +70,31 @@ def main() -> None:
         rmse_wu = rmse(y_wu, x)
 
         scatter_kw = dict(s=20, alpha=0.75, zorder=3)
-        ax.set_title(
-            f"({'abcdef'[idx]}) {band}", fontsize=12 * tick_factor, pad=10
-        )
+        ax.set_title(f"({'abcdef'[idx]}) {band}", fontsize=12 * tick_factor, pad=10)
         ax.scatter(
-            x, y_unif,
+            x,
+            y_unif,
             marker=MARKERS["unif"],
             label=rf"$\mathbf{{Unif}}: {rmse_unif:.4f}$",
             **scatter_kw,
         )
         ax.scatter(
-            x, y_maja,
+            x,
+            y_maja,
             marker=MARKERS["maja"],
             label=rf"$\mathbf{{Gauss}}: {rmse_maja:.4f}$",
             **scatter_kw,
         )
         ax.scatter(
-            x, y_wu,
+            x,
+            y_wu,
             marker=MARKERS["wu"],
             label=rf"$\mathbf{{Wu}}: {rmse_wu:.4f}$",
             **scatter_kw,
         )
         ax.scatter(
-            x, y_king,
+            x,
+            y_king,
             marker=MARKERS["king"],
             label=rf"$\mathbf{{King}}:~{rmse_king:.4f}$",
             **scatter_kw,
@@ -111,12 +113,18 @@ def main() -> None:
         if idx in [0, 3]:
             ax.set_ylabel(r"$\hat{\rho}_\mathrm{s}$", fontsize=12 * tick_factor)
         ax.tick_params(
-            axis="both", which="major",
-            width=1.5, length=6, labelsize=10 * tick_factor,
+            axis="both",
+            which="major",
+            width=1.5,
+            length=6,
+            labelsize=10 * tick_factor,
         )
         ax.tick_params(
-            axis="both", which="minor",
-            width=1.0, length=3, labelsize=8 * tick_factor,
+            axis="both",
+            which="minor",
+            width=1.0,
+            length=3,
+            labelsize=8 * tick_factor,
         )
         for spine in ax.spines.values():
             spine.set_linewidth(1.5)
@@ -141,29 +149,47 @@ def main() -> None:
 
     fig2, ax2 = plt.subplots(figsize=(5, 3.6))
     ax2.plot(
-        BANDS_NM, impr_unif,
-        marker=MARKERS["unif"], linewidth=1.5, markersize=7, label="vs Unif",
+        BANDS_NM,
+        impr_unif,
+        marker=MARKERS["unif"],
+        linewidth=1.5,
+        markersize=7,
+        label="vs Unif",
     )
     ax2.plot(
-        BANDS_NM, impr_maja,
-        marker=MARKERS["maja"], linewidth=1.5, markersize=7, label=r"vs Gauss",
+        BANDS_NM,
+        impr_maja,
+        marker=MARKERS["maja"],
+        linewidth=1.5,
+        markersize=7,
+        label=r"vs Gauss",
     )
     ax2.plot(
-        BANDS_NM, impr_wu,
-        marker=MARKERS["wu"], linewidth=1.5, markersize=7, label="vs Wu",
+        BANDS_NM,
+        impr_wu,
+        marker=MARKERS["wu"],
+        linewidth=1.5,
+        markersize=7,
+        label="vs Wu",
     )
-    ax2.set_ylim(-10, 50)
+    ax2.set_ylim(-10, 70)
     ax2.axhline(0, color="black", linewidth=1, linestyle="--")
     ax2.set_xlim(BANDS_NM[0], BANDS_NM[-1])
     ax2.set_xlabel(r"Wavelength $[\mathrm{nm}]$", fontsize=12 * tick_factor)
     ax2.set_ylabel(r"RMSE improvement $[\%]$", fontsize=12 * tick_factor)
     ax2.tick_params(
-        axis="both", which="major",
-        width=1.5, length=6, labelsize=10 * tick_factor,
+        axis="both",
+        which="major",
+        width=1.5,
+        length=6,
+        labelsize=10 * tick_factor,
     )
     ax2.tick_params(
-        axis="both", which="minor",
-        width=1.5, length=3, labelsize=8 * tick_factor,
+        axis="both",
+        which="minor",
+        width=1.5,
+        length=3,
+        labelsize=8 * tick_factor,
     )
     ax2.tick_params(axis="both", pad=5)
     for spine in ax2.spines.values():
