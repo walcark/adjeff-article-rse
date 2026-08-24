@@ -12,7 +12,7 @@ adjeff version bump.
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 __all__ = ["ARTICLE_ATMOSPHERE", "RunConfig", "add_run_arguments", "parse_run"]
@@ -58,6 +58,9 @@ class RunConfig:
         Root of the adjeff on-disk cache.
     smoke : bool
         ``True`` when the run is a shape check rather than a real figure.
+    explicit : frozenset[str]
+        Fields the caller set on the command line.  :meth:`resolve` never
+        overwrites those.
     """
 
     n: int = 3999
@@ -68,6 +71,35 @@ class RunConfig:
     figs_dir: Path = _REPO_ROOT / "output"
     cache_dir: str = "/tmp/adjeff-figures"
     smoke: bool = False
+    explicit: frozenset[str] = frozenset()
+
+    def resolve(self, **native: object) -> "RunConfig":
+        """Fill in a script's native run parameters.
+
+        Figures do not all work on the same grid: the sweeps of figures 7
+        to 17 run at 120 m over 1999 pixels where figures 2 to 5 run at
+        50 m over 3999.  A script declares its own values here and they
+        apply unless something more specific already decided: an explicit
+        command-line option always wins, and so does ``--smoke``, whose
+        whole purpose is to shrink the run.
+
+        Parameters
+        ----------
+        **native
+            Field values native to the calling script, e.g.
+            ``run.resolve(n=1999, res_km=0.12)``.
+
+        Returns
+        -------
+        RunConfig
+            A copy carrying the native values that nothing overrode.
+        """
+        if self.smoke:
+            return self
+        updates = {
+            k: v for k, v in native.items() if k not in self.explicit
+        }
+        return replace(self, **updates) if updates else self
 
     @property
     def extent_km(self) -> float:
@@ -155,6 +187,4 @@ def parse_run(
         )
         if value is not None
     }
-    from dataclasses import replace
-
-    return replace(base, **overrides), args
+    return replace(base, **overrides, explicit=frozenset(overrides)), args

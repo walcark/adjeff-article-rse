@@ -10,10 +10,13 @@ from adjeff_article_1.psf_comparison import psf_comparison_figure
 from adjeff_article_1.runconfig import parse_run
 
 BAND = S2Band.B03
+RES_KM = 0.05
+N = 3999
 
 
 def main() -> None:
     run, _ = parse_run(__doc__.splitlines()[0])
+    run = run.resolve(n=N, res_km=RES_KM)
     psf_comparison_figure(
         name="figure5",
         band=BAND,

@@ -50,6 +50,7 @@ def gauss_scenes(
     run: RunConfig,
     cfg: FullConfig | None = None,
     sigmas: tuple[float, ...] = GAUSS_SIGMAS,
+    **pipeline_kwargs: object,
 ) -> list[ImageDict]:
     """Run the forward pipeline on one Gaussian landscape per sigma.
 
@@ -63,6 +64,9 @@ def gauss_scenes(
         Atmosphere to use.  Defaults to :func:`article_config`.
     sigmas : tuple[float, ...]
         Gaussian widths in km.
+    **pipeline_kwargs
+        Extra keywords forwarded to ``run_forward_pipeline``, e.g.
+        ``remove_rayleigh=True``.
 
     Returns
     -------
@@ -80,6 +84,7 @@ def gauss_scenes(
             **cfg,
             n_ph=run.n_ph,
             cache=cache,
+            **pipeline_kwargs,
         )
         for s in sigmas
     ]
@@ -90,6 +95,7 @@ def disk_scenes(
     run: RunConfig,
     cfg: FullConfig | None = None,
     radii: tuple[float, ...] = DISK_RADII,
+    **pipeline_kwargs: object,
 ) -> list[ImageDict]:
     """Run the forward pipeline on one uniform disk per radius.
 
@@ -103,6 +109,9 @@ def disk_scenes(
         Atmosphere to use.  Defaults to :func:`article_config`.
     radii : tuple[float, ...]
         Disk radii in km.
+    **pipeline_kwargs
+        Extra keywords forwarded to ``run_forward_pipeline``, e.g.
+        ``remove_rayleigh=True``.
 
     Returns
     -------
@@ -119,6 +128,7 @@ def disk_scenes(
             **cfg,
             n_ph=run.n_ph,
             cache=cache,
+            **pipeline_kwargs,
         )
         for r in radii
     ]

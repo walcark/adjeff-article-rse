@@ -28,17 +28,20 @@ from adjeff_article_1.style import (
 )
 
 BAND = S2Band.B03
+RES_KM = 0.05
+N = 3999
 N_SAMPLES = 8
 
 
 def main() -> None:
     run, _ = parse_run(__doc__.splitlines()[0])
+    run = run.resolve(n=N, res_km=RES_KM, n_samples=N_SAMPLES)
     use_article_style()
 
     scenes = gauss_scenes(BAND, run)
     train_images = TrainingImages(images=scenes, weights=[1.0] * len(scenes))
 
-    psf_modules = gg_parameter_grid(BAND, run, run.n_samples or N_SAMPLES)
+    psf_modules = gg_parameter_grid(BAND, run, run.n_samples)
 
     losses = loss_landscape(
         train_images=train_images,

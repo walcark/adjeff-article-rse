@@ -28,6 +28,8 @@ from adjeff_article_1.style import (
 )
 
 BAND = S2Band.B03
+RES_KM = 0.05
+N = 3999
 N_SAMPLES = 5
 
 # x = n in [0.1, 0.4], y = sigma mapped to [1e-6, 1].  Row 0 of the
@@ -37,6 +39,7 @@ EXTENT = (0.1, 0.4, 1e-6, 1.0)
 
 def main() -> None:
     run, _ = parse_run(__doc__.splitlines()[0])
+    run = run.resolve(n=N, res_km=RES_KM, n_samples=N_SAMPLES)
     use_article_style()
 
     gauss = gauss_scenes(BAND, run)
@@ -49,8 +52,7 @@ def main() -> None:
         (r"(d) Full Gauss + Disk", gauss + disks),
     ]
 
-    n_samples = run.n_samples or N_SAMPLES
-    psf_modules = gg_parameter_grid(BAND, run, n_samples)
+    psf_modules = gg_parameter_grid(BAND, run, run.n_samples)
     loss_fn = Loss(Metric.RMSE_RAD)
     aspect = (EXTENT[1] - EXTENT[0]) / (EXTENT[3] - EXTENT[2])
 
@@ -66,7 +68,7 @@ def main() -> None:
             psf_modules=psf_modules,
             loss=loss_fn,
             device="cpu",
-        ).reshape(n_samples, n_samples)
+        ).reshape(run.n_samples, run.n_samples)
 
         im = ax.imshow(losses, extent=EXTENT, origin="upper")
         ax.set_aspect(aspect)
