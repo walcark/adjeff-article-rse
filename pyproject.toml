@@ -43,6 +43,11 @@ adjeff = { path = "../Adjeff", editable = true }
 [tool.pixi.dependencies]
 python = ">=3.11,<3.13"
 smartg = ">=1.2.0,<2"
+# smartg 1.2.0 calls geoclide's `get_rotateX_tf`, renamed to
+# `get_rotate_x_tf` in geoclide 4.0.0.  Only adjeff's PSF sampler reaches
+# that path, which scripts/article1/transsect.py uses.  Mirrors the bound
+# adjeff sets; lift both together.
+geoclide = ">=3,<4"
 matplotlib = ">=3.9"
 scienceplots = ">=2.0"
 numpy = ">=2.0"
