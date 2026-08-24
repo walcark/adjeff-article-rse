@@ -481,6 +481,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/a6/c4/0679472c60052c27efa612b4cd3ddd2a23e885dcdc73461781d2c802d39e/configobj-5.0.9-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a9/18/489c97b834dfff9cf2fc2507cede4bcd4b11e67f84bc462acd1992496f86/structlog-26.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a9/84/1798b6d85ecde0e31546004efd25c5de1b1f49250644a60cce460e12593a/hatchling-1.32.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/ac/1f/78819b5449647ca841595db85711ce8fc7049390cd0c5a734d8b0d0e954e/adjeff-0.7.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b2/a3/e137168c9c44d18eff0376253da9f1e9234d0239e0ee230d2fee6cea8e55/jeepney-0.9.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/81/4da04ced5a082363ecfa159c010d200ecbd959ae410c10c0264a38cac0f5/markdown_it_py-4.2.0-py3-none-any.whl
@@ -491,7 +492,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/b9/6d/a637d52449d98a6892d9a4dc0262587afdb6a66f201871842dce5a97b1c1/httpx2-2.10.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/bc/e7/5c595c75e9f41a44f30e526eda465ea0b4eec93470e074e4a111b253f13a/s3transfer-0.19.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/bd/24/12818598c362d7f300f18e74db45963dbcb85150324092410c8b49405e42/pyproject_hooks-1.2.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/be/58/9b9a2b5cdc7e2c8de427a6dd11844b1be3348a1af66b606c5b0ef4ac4af6/adjeff-0.6.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/c4/b7/fa7b827ce0fc9bd697381e40f59d69a74c6ab553e246271685ec0acc75b2/boto3-1.43.72-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/c7/18/c86eb8e0202e32dd3df50d43d7ff9854f8e0603945ff398974c1d91ac1ef/tomli_w-1.2.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ce/a9/a780cc66f86335a6019f557a8aaca8fbb970728f0efd2430d15ff1beae0e/google_crc32c-1.8.0-cp312-cp312-manylinux1_x86_64.manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_5_x86_64.whl
@@ -9615,6 +9615,23 @@ packages:
   - tomlkit>=0.11.1
   - trove-classifiers
   requires_python: '>=3.10'
+- pypi: https://files.pythonhosted.org/packages/ac/1f/78819b5449647ca841595db85711ce8fc7049390cd0c5a734d8b0d0e954e/adjeff-0.7.0-py3-none-any.whl
+  name: adjeff
+  version: 0.7.0
+  sha256: a18989bdcabc408e27375af02cbc9e2e1cfc16d7489e0ef38cc46458a6740dde
+  requires_dist:
+  - dask>=2024.1.0
+  - joblib>=1.3.0
+  - numpy>=2.0.0
+  - pydantic>=2.12.5
+  - rasterio>=1.3.0
+  - scipy>=1.10.0
+  - structlog>=24.0.0
+  - torch>=2.0.0
+  - tqdm>=4.0.0
+  - xarray>=2026.1.0
+  - zarr>=3.0.0
+  requires_python: '>=3.11,<3.13'
 - pypi: https://files.pythonhosted.org/packages/b2/a3/e137168c9c44d18eff0376253da9f1e9234d0239e0ee230d2fee6cea8e55/jeepney-0.9.0-py3-none-any.whl
   name: jeepney
   version: 0.9.0
@@ -9742,23 +9759,6 @@ packages:
   version: 1.2.0
   sha256: 9e5c6bfa8dcc30091c74b0cf803c81fdd29d94f01992a7707bc97babb1141913
   requires_python: '>=3.7'
-- pypi: https://files.pythonhosted.org/packages/be/58/9b9a2b5cdc7e2c8de427a6dd11844b1be3348a1af66b606c5b0ef4ac4af6/adjeff-0.6.0-py3-none-any.whl
-  name: adjeff
-  version: 0.6.0
-  sha256: f23fa60a64652dc167b021e6baa31a59c758b8c0343ff780c6cb290ccc9f3110
-  requires_dist:
-  - dask>=2024.1.0
-  - joblib>=1.3.0
-  - numpy>=2.0.0
-  - pydantic>=2.12.5
-  - rasterio>=1.3.0
-  - scipy>=1.10.0
-  - structlog>=24.0.0
-  - torch>=2.0.0
-  - tqdm>=4.0.0
-  - xarray>=2026.1.0
-  - zarr>=3.0.0
-  requires_python: '>=3.11,<3.13'
 - pypi: https://files.pythonhosted.org/packages/c4/b7/fa7b827ce0fc9bd697381e40f59d69a74c6ab553e246271685ec0acc75b2/boto3-1.43.72-py3-none-any.whl
   name: boto3
   version: 1.43.72
