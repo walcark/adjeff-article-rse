@@ -61,9 +61,7 @@ def main() -> None:
     im = None
     for ax, (title, images) in zip(axes.flat, train_configs):
         losses = loss_landscape(
-            train_images=TrainingImages(
-                images=images, weights=[1.0] * len(images)
-            ),
+            train_images=TrainingImages(images=images, weights=[1.0] * len(images)),
             band=BAND,
             psf_modules=psf_modules,
             loss=loss_fn,
@@ -77,9 +75,7 @@ def main() -> None:
 
     for ax in axes[:, 0]:
         ax.set_yticks([1e-6, 0.333, 0.666, 1.0])
-        ax.set_yticklabels(
-            [r"$10^{0}$", r"$10^{-2}$", r"$10^{-4}$", r"$10^{-6}$"]
-        )
+        ax.set_yticklabels([r"$10^{0}$", r"$10^{-2}$", r"$10^{-4}$", r"$10^{-6}$"])
         ax.set_ylabel(r"$\sigma~[km]$", fontsize=font())
 
     for ax in axes[-1, :]:
