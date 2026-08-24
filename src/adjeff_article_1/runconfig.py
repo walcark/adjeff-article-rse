@@ -69,11 +69,23 @@ class RunConfig:
     cache_dir: str = "/tmp/adjeff-figures"
     smoke: bool = False
 
+    @property
+    def extent_km(self) -> float:
+        """Side of the simulated field of view, in km."""
+        return self.n * self.res_km
+
     @classmethod
     def smoke_run(cls) -> "RunConfig":
-        """Return the smallest configuration that still exercises the API."""
+        """Return the smallest configuration that still exercises the API.
+
+        The pixel size is coarsened rather than the field of view shrunk:
+        the article's landscapes go up to a 50 km radius, and a grid that
+        cannot hold them would diverge for reasons that have nothing to do
+        with the API being checked.
+        """
         return cls(
-            n=199,
+            n=401,
+            res_km=0.5,
             n_ph=int(1e3),
             n_samples=2,
             device="cpu",
