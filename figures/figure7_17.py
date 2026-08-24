@@ -34,8 +34,8 @@ from adjeff.utils import CacheStore
 plt.style.use(["science", "nature"])
 
 cache = CacheStore("/tmp/adjeff-figures")
-RES_KM = 0.05
-N = 3999
+RES_KM = 0.12
+N = 1999
 N_PH = int(1e5)
 FIGS_DIR = Path(__file__).parent.parent / "output"
 
@@ -63,6 +63,26 @@ SWEEP_LABEL = {
     "vza": lambda v: f"VZA $= {v}°$",
 }
 
+# Name of the swept parameter, as printed in the figure header.  Reviewer 3
+# asked for the aerosol type to be readable from the graphic alone; the header
+# also carries the relative humidity, which drives the particle size, and the
+# parameter being swept, without which the legend values are ambiguous.
+HEADER_SWEEP_LABEL = {
+    "aot": "AOT",
+    "h": "$h$ [km]",
+    "href": "$h_\\mathrm{ref}$ [km]",
+    "wl": "$\\lambda$ [nm]",
+    "sza": "$\\theta_s$ [$^\\circ$]",
+    "vza": "$\\theta_v$ [$^\\circ$]",
+}
+
+# Displayed name of each aerosol species. Figures sweeping the same variable
+# for different species are otherwise indistinguishable from the graphic alone.
+SPECIES_LABEL = {
+    "blackcar": "Black carbon",
+    "sulphate": "Sulphate",
+    "seasalt": "Sea salt",
+}
 
 def detect_sweep(args):
     """Return (sweep_var, sweep_vals) from parsed args."""
@@ -78,7 +98,9 @@ def detect_sweep(args):
     if not multi:
         raise ValueError("At least one argument must have multiple values.")
     if len(multi) > 1:
-        raise ValueError(f"Only one sweep variable allowed; got {[k for k, _ in multi]}.")
+        raise ValueError(
+            f"Only one sweep variable allowed; got {[k for k, _ in multi]}."
+        )
     return multi[0]
 
 
@@ -114,11 +136,13 @@ def run_one(
 
     scenes = []
     for radius in [1.0, 5.0, 50.0]:
-        scene = disk_image_dict(
-            radius=radius, res_km=RES_KM, bands=[band], n=N
-        )
+        scene = disk_image_dict(radius=radius, res_km=RES_KM, bands=[band], n=N)
         scene = run_forward_pipeline(
-            scene, **cfg, remove_rayleigh=remove_rayleigh, n_ph=N_PH, cache=cache,
+            scene,
+            **cfg,
+            remove_rayleigh=remove_rayleigh,
+            n_ph=N_PH,
+            cache=cache,
         )
         scenes.append(scene)
 
@@ -132,9 +156,7 @@ def run_one(
         n=N,
         init_parameters={"sigma": 0.1, "gamma": 1.0},
     )
-    psf_dict = optimize_adam_lbfgs(
-        model, train_images, Loss(Metric.RMSE_RAD)
-    )
+    psf_dict = optimize_adam_lbfgs(model, train_images, Loss(Metric.RMSE_RAD))
     return psf_dict.kernel(band).squeeze()
 
 
@@ -184,14 +206,16 @@ def main() -> None:
     y_min = 10 ** np.floor(np.log10(all_pos.min()))
     y_max = 10 ** np.ceil(np.log10(all_pos.max()))
 
-    fig, axes = plt.subplots(1, 2, figsize=(6, 3))
+    # Height grown from 3.0 to leave room for the header without shrinking the
+    # plotting area.
+    fig, axes = plt.subplots(1, 2, figsize=(6, 3.25), layout="constrained")
     tick_factor = 1.2
 
     for kernel, label in zip(kernels, labels):
         prof = kernel.adjeff.radial()
         r = prof.coords["r"].values
         v = prof.values
-        cdf = kernel.adjeff.radial_cdf()
+        cdf = kernel.adjeff.radial(stat="cdf")
         v_cdf = cdf.values
 
         opts = dict(linewidth=1.3)
@@ -203,26 +227,33 @@ def main() -> None:
     axes[0].set_ylim(y_min, y_max)
     axes[1].set_ylim(0.0, 1.0)
 
+    # Anchor the decade ticks on y_max: the log locator would otherwise pick a
+    # different decade parity from one figure of the series to the next.
+    n_decades = round(np.log10(y_max / y_min))
+    axes[0].set_yticks([y_max * 10.0 ** (-2 * k) for k in range(n_decades // 2 + 1)])
+
     axes[0].set_title(r"(a) PSF", pad=5, fontsize=12 * tick_factor)
-    axes[1].set_title(
-        r"(b) Encircled Energy", pad=5, fontsize=12 * tick_factor
-    )
+    axes[1].set_title(r"(b) Encircled Energy", pad=5, fontsize=12 * tick_factor)
 
     axes[0].set_ylabel(r"$P_{5S}(r)$", fontsize=12 * tick_factor)
-    axes[1].set_ylabel(
-        r"$\mathrm{CDF}[P_{5S}](r)$", fontsize=12 * tick_factor
-    )
+    axes[1].set_ylabel(r"$\mathrm{CDF}[P_{5S}](r)$", fontsize=12 * tick_factor)
 
     for ax in axes:
         ax.set_xlim(0, 160)
         ax.set_xlabel(r"Radius $r$ [km]", fontsize=12 * tick_factor)
         ax.tick_params(
-            axis="both", which="major",
-            width=1.5, length=6, labelsize=10 * tick_factor,
+            axis="both",
+            which="major",
+            width=1.5,
+            length=6,
+            labelsize=10 * tick_factor,
         )
         ax.tick_params(
-            axis="both", which="minor",
-            width=1.5, length=3, labelsize=8 * tick_factor,
+            axis="both",
+            which="minor",
+            width=1.5,
+            length=3,
+            labelsize=8 * tick_factor,
         )
         for spine in ax.spines.values():
             spine.set_linewidth(1.5)
@@ -230,7 +261,15 @@ def main() -> None:
     axes[0].legend(loc="upper right", fontsize=10 * tick_factor)
     axes[1].legend(loc="lower right", fontsize=10 * tick_factor)
 
-    fig.tight_layout()
+    species = SPECIES_LABEL.get(args.species, args.species)
+    fig.suptitle(
+        "\\textbf{" + species + "} aerosol, "
+        f"$\\mathrm{{RH}} = {args.rh:.0f}\\%$"
+        "$\\;|\\;$"
+        f"varying {HEADER_SWEEP_LABEL[sweep_var]}",
+        fontsize=13 * tick_factor,
+    )
+
     plt.savefig(FIGS_DIR / f"{args.figure}.png", dpi=600)
     plt.show()
 
