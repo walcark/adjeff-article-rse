@@ -56,7 +56,6 @@ from adjeff.api import (
 from adjeff.core import (
     ImageDict,
     KingPSF,
-    PSFDict,
     SensorBand,
     disk_image_dict,
     gaussian_image_dict,
@@ -65,6 +64,7 @@ from adjeff.modules.models import Unif2Surface
 from adjeff.optim import Loss, Metric, TrainingImages
 from adjeff.utils import CacheStore
 from adjeff_article_1.runconfig import RunConfig, parse_run
+from adjeff.core import psf_kernel
 from adjeff_article_1.shim import (
     RADIATIVE_VARS,
     correct,
@@ -130,7 +130,7 @@ def build_landscapes(
 
 def evaluate_band(
     scenes: list[ImageDict],
-    psf_dict: PSFDict,
+    psf_tree: xr.DataTree,
     band: SensorBand,
     aots: list[float],
     aot_ref: float,
@@ -156,7 +156,7 @@ def evaluate_band(
                 est, unif = correct(
                     ds=select_scalar(ds, aot=aot_scalar),
                     band=band,
-                    kernel=select_scalar(psf_dict.kernel(band), aot=aot_psf),
+                    kernel=select_scalar(psf_kernel(psf_tree, band), aot=aot_psf),
                     device=device,
                     rho_toa=select_scalar(ds["rho_toa"], aot=aot_true),
                 )
@@ -221,7 +221,7 @@ def run_band(
         init_parameters={"sigma": 0.1, "gamma": 1.0},
         device=run.device,
     )
-    psf_dict = optimize_adam_lbfgs(
+    tree = optimize_adam_lbfgs(
         model,
         TrainingImages(images=scenes, weights=[1.0] * len(scenes)),
         Loss(Metric.RMSE_RAD),
@@ -230,7 +230,7 @@ def run_band(
 
     return evaluate_band(
         scenes=scenes,
-        psf_dict=psf_dict,
+        psf_tree=tree,
         band=band,
         aots=aots,
         aot_ref=args.aot_ref,

@@ -12,7 +12,7 @@ from __future__ import annotations
 import adjeff  # noqa: F401  (registers the .adjeff accessor)
 import numpy as np
 import xarray as xr
-from adjeff.core import ImageDict, PSFDict, S2Band, SensorBand
+from adjeff.core import ImageDict, S2Band, SensorBand, psf_tree
 from adjeff.modules.classic import Toa2Unif
 from adjeff.modules.models import Unif2Surface
 from adjeff.optim import Metric
@@ -100,13 +100,13 @@ def select_scalar(obj: xr.Dataset | xr.DataArray, **coords: float):
     its outputs carry singleton ``aot``, ``rh``, ``h`` and ``href``
     dimensions that the caller has to peel off before any comparison.
 
-    Would be deleted by: ``psf_dict.at(band, aot=0.4)`` upstream, plus
+    Would be deleted by: ``psf_kernel(tree, band).sel(aot=0.4)`` losing its singleton dims,
     configs that keep a scalar scalar.
 
     Parameters
     ----------
     obj : xr.Dataset or xr.DataArray
-        Output of a sampler, a pipeline or a frozen PSFDict.
+        Output of a sampler, a pipeline or a frozen PSF tree.
     **coords
         Coordinate values to select, matched to the nearest neighbour.
 
@@ -171,7 +171,7 @@ def correct(
 
     scene = Toa2Unif()(ImageDict({band: trimmed}))
     model = Unif2Surface(
-        psf_dict=PSFDict.from_kernels({band: kernel}), device=device
+        kernels=psf_tree({band: kernel}), device=device
     )
     model.eval()
     scene = model(scene)
@@ -219,12 +219,11 @@ def fitted_params(model: object) -> dict[str, float]:
     """Return the fitted PSF parameters of *model*, or an empty dict.
 
     The values live on the ``PSFModule`` held by the model, and neither
-    the model nor the frozen ``PSFDict`` exposes them: the only way in is
+    the model exposes them: the only way in is
     to walk ``model.modules()`` looking for anything that answers
     ``param_dict``.
 
-    Would be deleted by: ``model.psf_params(band)``, or a frozen PSFDict
-    with a single parameter storage strategy.
+    Would be deleted by: ``model.psf_params(band)`` upstream.
 
     Parameters
     ----------

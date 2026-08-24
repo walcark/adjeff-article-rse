@@ -12,7 +12,7 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 
 from adjeff.api import make_model, optimize_adam_lbfgs
-from adjeff.core import GaussPSF, PSFDict, PSFGrid, SensorBand
+from adjeff.core import GaussPSF, PSFGrid, SensorBand, psf_tree
 from adjeff.core._psf import PSFModule
 from adjeff.modules.models import Unif2Surface
 from adjeff.optim import Loss, Metric, TrainingImages
@@ -67,16 +67,16 @@ def psf_comparison_figure(
         init_parameters=init_parameters,
         device=run.device,
     )
-    psf_dict = optimize_adam_lbfgs(
+    tree = optimize_adam_lbfgs(
         model, train_images, Loss(Metric.RMSE_RAD), device=run.device
     )
 
-    model_fitted = Unif2Surface(psf_dict=psf_dict, device=run.device)
+    model_fitted = Unif2Surface(kernels=tree, device=run.device)
     reference_kernel = GaussPSF(
         PSFGrid(run.res_km, run.n), band, sigma=GAUSS_REFERENCE_KM
     ).to_dataarray()
     model_reference = Unif2Surface(
-        psf_dict=PSFDict.from_kernels({band: reference_kernel}),
+        kernels=psf_tree({band: reference_kernel}),
         device=run.device,
     )
 
