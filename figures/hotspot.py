@@ -69,7 +69,6 @@ from __future__ import annotations
 import argparse
 import contextlib
 from collections.abc import Iterator
-from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -86,32 +85,24 @@ from adjeff.api import (
 from adjeff.core import (
     ImageDict,
     KingPSF,
-    PSFDict,
-    S2Band,
     SensorBand,
     disk_image_dict,
     gaussian_image_dict,
 )
-from adjeff.modules.classic import Toa2Unif
 from adjeff.modules.models import Unif2Surface
 from adjeff.optim import Loss, Metric, TrainingImages
 from adjeff.utils import CacheStore
+from adjeff_article_1.runconfig import RunConfig, parse_run
+from adjeff_article_1.shim import (
+    correct,
+    fitted_params,
+    radial_rmse,
+    sym_profile,
+    wl_to_band,
+)
+from adjeff_article_1.style import save
 
 plt.style.use(["science", "nature"])
-
-FIGS_DIR = Path(__file__).parent.parent / "output"
-
-WL_TO_BAND = {
-    443.0: S2Band.B01,
-    490.0: S2Band.B02,
-    560.0: S2Band.B03,
-    665.0: S2Band.B04,
-    705.0: S2Band.B05,
-    740.0: S2Band.B06,
-    783.0: S2Band.B07,
-    842.0: S2Band.B08,
-    865.0: S2Band.B8A,
-}
 
 # Representative RPV coefficients for a vegetated canopy at 665 nm, the
 # band where the hotspot is most visible on crops: the red is strongly
@@ -242,72 +233,7 @@ def rpv_surface(k: float, bt: float, rc: float) -> Iterator[None]:
 # ----------------------------------------------------------------------
 
 
-def correct(
-    ds: xr.Dataset, band: SensorBand, kernel: xr.DataArray, device: str
-) -> tuple[xr.DataArray, xr.DataArray]:
-    """Correct one scene and return ``(rho_s_est, rho_unif)``.
 
-    The ground truth is deliberately dropped from the Dataset handed to
-    the modules, since :class:`Unif2Surface` writes its output under the
-    ``rho_s`` name and would otherwise overwrite it.
-    """
-    keep = [
-        "rho_toa",
-        "tdir_up",
-        "tdif_up",
-        "tdir_down",
-        "tdif_down",
-        "rho_atm",
-        "sph_alb",
-    ]
-    trimmed = xr.Dataset(
-        {v: ds[v].squeeze(drop=True) for v in keep if v in ds}
-    )
-
-    scene = Toa2Unif()(ImageDict({band: trimmed}))
-    model = Unif2Surface(
-        psf_dict=PSFDict.from_kernels({band: kernel}), device=device
-    )
-    model.eval()
-    scene = model(scene)
-    return scene[band]["rho_s"], scene[band]["rho_unif"]
-
-
-def radial_rmse(
-    pred: xr.DataArray,
-    truth: xr.DataArray,
-    mask_on: xr.DataArray,
-    device: str,
-) -> float:
-    """Radial RMSE between *pred* and *truth*, masked on *mask_on*."""
-    if not pred.shape == truth.shape == mask_on.shape:
-        raise ValueError(
-            f"Shape mismatch: pred {pred.shape}, truth {truth.shape}, "
-            f"mask {mask_on.shape}. Extra dimensions were not squeezed."
-        )
-    return float(
-        Metric.RMSE_RAD(
-            pred.adjeff.to_tensor().to(device),
-            truth.adjeff.to_tensor().to(device),
-            truth.adjeff.dists.to(device),
-            mask_on.adjeff.to_tensor().to(device),
-        )
-    )
-
-
-def king_params(model: object) -> dict[str, float]:
-    """Return the fitted King parameters of *model*, or an empty dict.
-
-    The parameters live on the ``PSFModule`` held by the model, not on
-    the kernel DataArray returned by :meth:`PSFDict.kernel`.
-    """
-    for obj in getattr(model, "modules", lambda: [])():
-        fn = getattr(obj, "param_dict", None)
-        if callable(fn):
-            params = fn()
-            if params:
-                return dict(params)
-    return {}
 
 
 def rpv_landscape(scale: float, **kwargs: float) -> ImageDict:
@@ -325,7 +251,10 @@ def rpv_landscape(scale: float, **kwargs: float) -> ImageDict:
 
 
 def uniform_response(
-    levels: list[float], band: SensorBand, args: argparse.Namespace
+    levels: list[float],
+    band: SensorBand,
+    args: argparse.Namespace,
+    run: RunConfig,
 ) -> pd.DataFrame:
     """Measure the scalar BRDF bias on a strictly uniform surface.
 
@@ -363,7 +292,7 @@ def uniform_response(
     def flat(rho: float) -> ImageDict:
         return gaussian_image_dict(
             sigma=1.0,
-            res_km=args.res_km,
+            res_km=run.res_km,
             rho_min=rho,
             rho_max=rho,
             bands=[band],
@@ -383,25 +312,25 @@ def uniform_response(
         lamb = run_forward_pipeline(
             flat(rho),
             **cfg,
-            cache=CacheStore(args.cache_dir + "/uniform_lambertian"),
+            cache=CacheStore(run.cache_dir + "/uniform_lambertian"),
             nr=args.uniform_nr,
-            n_ph=args.n_ph,
+            n_ph=run.n_ph,
         )
         with rpv_surface(args.k, args.bt, args.rc):
             rpv = run_forward_pipeline(
                 rpv_landscape(
                     args.rpv_scale,
                     sigma=1.0,
-                    res_km=args.res_km,
+                    res_km=run.res_km,
                     rho_min=rho,
                     rho_max=rho,
                     bands=[band],
                     n=args.uniform_n,
                 ),
                 **cfg,
-                cache=CacheStore(args.cache_dir + "/uniform_hotspot"),
+                cache=CacheStore(run.cache_dir + "/uniform_hotspot"),
                 nr=args.uniform_nr,
-                n_ph=args.n_ph,
+                n_ph=run.n_ph,
             )
         rows.append(
             {
@@ -453,13 +382,6 @@ def scalar_gain(pred: xr.DataArray, truth: xr.DataArray) -> float:
     return float(np.dot(a, b) / denom) if denom > 0.0 else 1.0
 
 
-def sym_profile(da: xr.DataArray) -> tuple[np.ndarray, np.ndarray]:
-    """Return a symmetric radial profile ``(r, values)`` for plotting."""
-    prof = da.squeeze().adjeff.radial()
-    r = prof.coords["r"].values
-    v = prof.values
-    return np.concatenate([-r[::-1], r]), np.concatenate([v[::-1], v])
-
 
 # ----------------------------------------------------------------------
 # Figure
@@ -473,8 +395,9 @@ def plot(
     hots_flat: xr.DataArray,
     unif: xr.DataArray,
     args: argparse.Namespace,
+    run: RunConfig,
     scale_km: float,
-    out: Path,
+    name: str,
 ) -> None:
     """Draw the three-panel hotspot figure and save it to *out*."""
     fig, axes = plt.subplots(1, 3, figsize=(10.5, 3.1))
@@ -556,7 +479,7 @@ def plot(
     ax.set_title("(c) retrieval error")
 
     fig.tight_layout()
-    fig.savefig(out, dpi=300)
+    out = save(fig, name, run.figs_dir, dpi=300)
     print(f"    wrote {out}", flush=True)
 
 
@@ -566,7 +489,10 @@ def plot(
 
 
 def build_landscapes(
-    band: SensorBand, args: argparse.Namespace, scale: float = 1.0
+    band: SensorBand,
+    args: argparse.Namespace,
+    run: RunConfig,
+    scale: float = 1.0,
 ) -> list[tuple[str, ImageDict]]:
     """Return the 6 training landscapes of Section 2.3.1, as in the article.
 
@@ -580,11 +506,11 @@ def build_landscapes(
     no effect, but it would break for a non-zero ``rho_min``.
     """
     common = dict(
-        res_km=args.res_km,
+        res_km=run.res_km,
         rho_min=0.0,
         rho_max=args.rho_max * scale,
         bands=[band],
-        n=args.n,
+        n=run.n,
     )
     out: list[tuple[str, ImageDict]] = []
     for v in args.scales:
@@ -595,7 +521,7 @@ def build_landscapes(
 
 
 def simulate(
-    band: SensorBand, args: argparse.Namespace
+    band: SensorBand, args: argparse.Namespace, run: RunConfig
 ) -> tuple[list[tuple[str, ImageDict]], list[tuple[str, ImageDict]]]:
     """Run the forward pipeline on the 6 landscapes, Lambertian and RPV."""
     cfg = make_full_config(
@@ -610,14 +536,14 @@ def simulate(
         vaa=args.vaa,
         species={args.species: 1.0},
     )
-    pipeline = dict(nr=args.nr, n_ph=args.n_ph)
+    pipeline = dict(nr=args.nr, n_ph=run.n_ph)
 
     print(">>> forward pipeline, Lambertian", flush=True)
     lamb = [
         (name, run_forward_pipeline(
             img, **cfg,
-            cache=CacheStore(args.cache_dir + "/lambertian"), **pipeline))
-        for name, img in build_landscapes(band, args)
+            cache=CacheStore(run.cache_dir + "/lambertian"), **pipeline))
+        for name, img in build_landscapes(band, args, run)
     ]
 
     # The cache is keyed on the scene configuration, which the surface
@@ -628,8 +554,8 @@ def simulate(
         hots = [
             (name, run_forward_pipeline(
                 img, **cfg,
-                cache=CacheStore(args.cache_dir + "/hotspot"), **pipeline))
-            for name, img in build_landscapes(band, args, args.rpv_scale)
+                cache=CacheStore(run.cache_dir + "/hotspot"), **pipeline))
+            for name, img in build_landscapes(band, args, run, args.rpv_scale)
         ]
 
     return lamb, hots
@@ -639,6 +565,7 @@ def train(
     scenes: list[tuple[str, ImageDict]],
     band: SensorBand,
     args: argparse.Namespace,
+    run: RunConfig,
 ) -> tuple[xr.DataArray, dict[str, float]]:
     """Optimise a single King PSF over the whole training set.
 
@@ -653,25 +580,25 @@ def train(
         Unif2Surface,
         KingPSF,
         [band],
-        res_km=args.res_km,
-        n=args.n,
+        res_km=run.res_km,
+        n=run.n,
         init_parameters={"sigma": 0.1, "gamma": 1.0},
-        device=args.device,
+        device=run.device,
     )
     psf_dict = optimize_adam_lbfgs(
         model,
         TrainingImages(images=images, weights=[1.0] * len(images)),
         Loss(Metric.RMSE_RAD),
-        device=args.device,
+        device=run.device,
     )
     kernel = psf_dict.kernel(band).squeeze(drop=True)
-    params = king_params(model)
+    params = fitted_params(model)
 
     # Joint training over six 3999x3999 landscapes is memory hungry.
     # The model is released before returning so that a second training
     # in the same process does not add to the peak.
     del model, psf_dict
-    if args.device.startswith("cuda"):
+    if run.device.startswith("cuda"):
         import torch
 
         torch.cuda.empty_cache()
@@ -685,6 +612,7 @@ def evaluate(
     kernel: xr.DataArray,
     band: SensorBand,
     args: argparse.Namespace,
+    run: RunConfig,
     resp: pd.DataFrame,
 ) -> list[dict[str, float]]:
     """Correct every landscape with the shared operational kernel."""
@@ -692,24 +620,24 @@ def evaluate(
 
     for (name, ls), (_, hs) in zip(lamb, hots, strict=True):
         truth = ls[band]["rho_s"].squeeze(drop=True)
-        lamb_est, lamb_unif = correct(ls[band], band, kernel, args.device)
-        hots_est, hots_unif = correct(hs[band], band, kernel, args.device)
+        lamb_est, lamb_unif = correct(ls[band], band, kernel, run.device)
+        hots_est, hots_unif = correct(hs[band], band, kernel, run.device)
 
         gain = scalar_gain(hots_est, truth)
         row = {
             "landscape": name,
             "wl_nm": band.wl_nm,
             "no_corr_lamb": radial_rmse(
-                lamb_unif, truth, lamb_unif, args.device),
-            "corr_lamb": radial_rmse(lamb_est, truth, lamb_unif, args.device),
+                lamb_unif, truth, lamb_unif, run.device),
+            "corr_lamb": radial_rmse(lamb_est, truth, lamb_unif, run.device),
             "no_corr_hots": radial_rmse(
-                hots_unif, truth, hots_unif, args.device),
-            "corr_hots": radial_rmse(hots_est, truth, hots_unif, args.device),
+                hots_unif, truth, hots_unif, run.device),
+            "corr_hots": radial_rmse(hots_est, truth, hots_unif, run.device),
             "brdf_gain": gain,
             "corr_hots_degained": radial_rmse(
-                hots_est * gain, truth, hots_unif, args.device),
+                hots_est * gain, truth, hots_unif, run.device),
             "corr_hots_unbiased": radial_rmse(
-                unbias(hots_est, resp), truth, hots_unif, args.device),
+                unbias(hots_est, resp), truth, hots_unif, run.device),
         }
         row["eps_total"] = row["corr_hots"] - row["corr_lamb"]
         rows.append(row)
@@ -723,8 +651,9 @@ def evaluate(
                 hots_flat=unbias(hots_est, resp),
                 unif=lamb_unif,
                 args=args,
+                run=run,
                 scale_km=float(name.removeprefix("gauss")),
-                out=FIGS_DIR / f"hotspot_{name}km.png",
+                name=f"hotspot_{name}km",
             )
 
     return rows
@@ -769,15 +698,20 @@ def main() -> None:
     )
     parser.add_argument("--uniform-n", type=int, default=399)
     parser.add_argument("--uniform-nr", type=int, default=60)
-    parser.add_argument("--res-km", type=float, default=0.05)
-    parser.add_argument("--n", type=int, default=3999)
     parser.add_argument("--nr", type=int, default=500)
-    parser.add_argument("--n-ph", type=int, default=int(1e5))
-    parser.add_argument("--device", type=str, default="cuda")
-    parser.add_argument("--cache-dir", type=str, default="/tmp/adjeff-hotspot")
-    args = parser.parse_args()
+    run, args = parse_run(__doc__.splitlines()[0], parser)
+    run = run.resolve(n=3999, res_km=0.05, cache_dir="/tmp/adjeff-hotspot")
 
-    band = WL_TO_BAND[args.wl]
+    # The hotspot study is a six-landscape joint training on top of two
+    # forward pipelines: a smoke run keeps one landscape and three
+    # reflectance levels, which still walks the whole chain.
+    if run.smoke:
+        args.scales = [1.0]
+        args.uniform_levels = [0.0, 0.5, 1.0]
+        args.uniform_n = 99
+        args.uniform_nr = 20
+
+    band = wl_to_band(args.wl)
 
     shape_view = float(
         rpv_shape(
@@ -801,26 +735,26 @@ def main() -> None:
         flush=True,
     )
 
-    FIGS_DIR.mkdir(parents=True, exist_ok=True)
+    run.figs_dir.mkdir(parents=True, exist_ok=True)
 
     print(">>> scalar BRDF response on a uniform surface", flush=True)
-    resp = uniform_response(args.uniform_levels, band, args)
-    resp.to_csv(FIGS_DIR / "hotspot_uniform_response.csv", index=False)
+    resp = uniform_response(args.uniform_levels, band, args, run)
+    resp.to_csv(run.figs_dir / "hotspot_uniform_response.csv", index=False)
     print(resp.to_string(index=False), flush=True)
 
-    lamb, hots = simulate(band, args)
+    lamb, hots = simulate(band, args, run)
 
     print(">>> King PSF, trained jointly on the 6 landscapes", flush=True)
-    kernel, p_lamb = train(lamb, band, args)
+    kernel, p_lamb = train(lamb, band, args, run)
     print(f"    Lambertian training : {p_lamb}", flush=True)
     pd.DataFrame([{"trained_on": "lambertian", **p_lamb}]).to_csv(
-        FIGS_DIR / "hotspot_king_params.csv", index=False
+        run.figs_dir / "hotspot_king_params.csv", index=False
     )
 
-    rows = evaluate(lamb, hots, kernel, band, args, resp)
+    rows = evaluate(lamb, hots, kernel, band, args, run, resp)
 
     df = pd.DataFrame(rows)
-    out = FIGS_DIR / "hotspot_rmse.csv"
+    out = run.figs_dir / "hotspot_rmse.csv"
     df.to_csv(out, index=False)
     print(df.to_string(index=False))
     print(f"wrote {out}")
