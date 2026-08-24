@@ -7,6 +7,8 @@ actually differs between figures.
 
 from __future__ import annotations
 
+import numpy as np
+
 from adjeff.api import FullConfig, make_full_config, run_forward_pipeline
 from adjeff.core import (
     GeneralizedGaussianPSF,
@@ -125,18 +127,27 @@ def disk_scenes(
 def gg_parameter_grid(
     band: SensorBand,
     run: RunConfig,
+    n_samples: int,
 ) -> list[GeneralizedGaussianPSF]:
     """Return the ``(sigma, n)`` grid of generalised Gaussian PSFs.
 
     ``sigma`` is log-spaced in ``[1e-6, 1]`` km and ``n`` linear in
-    ``[0.1, 0.4]``, giving ``run.n_samples ** 2`` kernels in row-major
-    order so that the result reshapes to ``(n_samples, n_samples)``.
-    """
-    import numpy as np
+    ``[0.1, 0.4]``, giving ``n_samples ** 2`` kernels in row-major order
+    so that the result reshapes to ``(n_samples, n_samples)``.
 
+    Parameters
+    ----------
+    band : SensorBand
+        Band the kernels apply to.
+    run : RunConfig
+        Supplies the PSF grid resolution and size.
+    n_samples : int
+        Side of the parameter grid.  Pass ``run.n_samples or DEFAULT`` so
+        that a smoke run shrinks it.
+    """
     grid = PSFGrid(res=run.res_km, n=run.n)
-    sigma_vals = np.logspace(-6, 0, run.n_samples).astype(np.float32)
-    n_vals = np.linspace(0.1, 0.4, run.n_samples).astype(np.float32)
+    sigma_vals = np.logspace(-6, 0, n_samples).astype(np.float32)
+    n_vals = np.linspace(0.1, 0.4, n_samples).astype(np.float32)
     return [
         GeneralizedGaussianPSF(grid, band, sigma=float(s), n=float(n))
         for s in sigma_vals

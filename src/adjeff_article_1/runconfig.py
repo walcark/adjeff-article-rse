@@ -46,8 +46,10 @@ class RunConfig:
         Photons per Smart-G call.
     res_km : float
         Pixel size in km.
-    n_samples : int
-        Side of the parameter landscape grids (figures 2 and 3).
+    n_samples : int or None
+        Side of the parameter landscape grids (figures 2 and 3).  ``None``
+        means "keep the value the script asks for"; smoke runs force it
+        down so that a landscape stays a handful of kernels.
     device : str
         Torch device for the convolution and optimisation steps.
     figs_dir : Path
@@ -61,7 +63,7 @@ class RunConfig:
     n: int = 3999
     n_ph: int = int(1e5)
     res_km: float = 0.05
-    n_samples: int = 5
+    n_samples: int | None = None
     device: str = "cuda"
     figs_dir: Path = _REPO_ROOT / "output"
     cache_dir: str = "/tmp/adjeff-figures"
