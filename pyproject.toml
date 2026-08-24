@@ -13,7 +13,7 @@ build-backend = "hatchling.build"
 requires = ["hatchling"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/adjeff_article_rse"]
+packages = ["src/adjeff_article_1"]
 
 # ── Pixi workspace ────────────────────────────────────────────────────────────
 [tool.pixi.workspace]
@@ -22,24 +22,31 @@ platforms = ["linux-64"]
 
 [tool.pixi.pypi-dependencies]
 adjeff-article-rse = { path = ".", editable = true }
-adjeff = ">=0.5.1"
+# Pinned: figures in this repo are reproduced against this exact release.
+adjeff = "==0.6.0"
+# Used lazily by adjeff's MAJA loader; PyPI-only, no conda-forge build.
+sensorsio = ">=1.0.2"
 
-# Conda-only deps that adjeff needs but cannot declare on PyPI.
-# All other adjeff deps (numpy, xarray, pydantic, ...) come transitively
-# via adjeff's [project.dependencies] when installed from PyPI.
+# Conda-only deps that adjeff needs but cannot declare on PyPI (smartg pulls
+# luts and geoclide transitively), plus what this repo imports directly.
 [tool.pixi.dependencies]
 python = ">=3.11,<3.13"
-smartg = ">=1.1.3,<2"
-luts = ">=1.0.6,<2"
+smartg = ">=1.2.0,<2"
 matplotlib = ">=3.9"
 scienceplots = ">=2.0"
-cuda-version = "12.6.*"
+numpy = ">=2.0"
+xarray = ">=2026.1.0"
+pandas = ">=2.0"
+# CUDA >= 12.8 is required: nvcc only learns `sm_120` (Blackwell, RTX 50xx)
+# there, and SMART-G compiles its kernels for the local compute capability.
+cuda-version = "12.9.*"
 pytorch-gpu = "*"
-cuda-cudart-dev = "12.6.*"
-cuda-nvcc = "12.6.*"
+# pycuda compiles its kernels at runtime but does not declare nvcc itself.
+cuda-cudart-dev = "12.9.*"
+cuda-nvcc = "12.9.*"
 
 [tool.pixi.system-requirements]
-cuda = "12.6"
+cuda = "12.9"
 
 # ── Tâches ───────────────────────────────────────────────────────────────────
 [tool.pixi.tasks]
