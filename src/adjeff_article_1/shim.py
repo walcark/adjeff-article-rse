@@ -12,9 +12,31 @@ from __future__ import annotations
 import adjeff  # noqa: F401  (registers the .adjeff accessor)
 import numpy as np
 import xarray as xr
-from adjeff.core import S2Band, SensorBand
+from adjeff.core import ImageDict, PSFDict, S2Band, SensorBand
+from adjeff.modules.classic import Toa2Unif
+from adjeff.modules.models import Unif2Surface
+from adjeff.optim import Metric
 
-__all__ = ["sym_profile", "wl_to_band"]
+__all__ = [
+    "RADIATIVE_VARS",
+    "correct",
+    "radial_rmse",
+    "select_scalar",
+    "sym_profile",
+    "wl_to_band",
+]
+
+# The six quantities of the 5S formula.  adjeff produces them and every
+# module declares them one by one, but never publishes the list.
+# Would be deleted by: ``adjeff.modules.samplers.RADIATIVE_VARS``.
+RADIATIVE_VARS = (
+    "tdir_up",
+    "tdif_up",
+    "tdir_down",
+    "tdif_down",
+    "rho_atm",
+    "sph_alb",
+)
 
 # SensorBand carries wl_nm but offers no reverse lookup, so every script
 # that names a band by its wavelength has to build this table itself.
@@ -68,3 +90,125 @@ def sym_profile(da: xr.DataArray) -> tuple[np.ndarray, np.ndarray]:
     r = prof.coords["r"].values
     v = prof.values
     return np.concatenate([-r[::-1], r]), np.concatenate([v[::-1], v])
+
+
+def select_scalar(obj: xr.Dataset | xr.DataArray, **coords: float):
+    """Select one point of a swept dimension and drop every singleton dim.
+
+    adjeff coerces scalar configuration values to length-one arrays, so
+    its outputs carry singleton ``aot``, ``rh``, ``h`` and ``href``
+    dimensions that the caller has to peel off before any comparison.
+
+    Would be deleted by: ``psf_dict.at(band, aot=0.4)`` upstream, plus
+    configs that keep a scalar scalar.
+
+    Parameters
+    ----------
+    obj : xr.Dataset or xr.DataArray
+        Output of a sampler, a pipeline or a frozen PSFDict.
+    **coords
+        Coordinate values to select, matched to the nearest neighbour.
+
+    Returns
+    -------
+    xr.Dataset or xr.DataArray
+        Same type as *obj*, without the selected or singleton dimensions.
+    """
+    if coords:
+        obj = obj.sel(coords, method="nearest", drop=True)
+    return obj.squeeze(drop=True)
+
+
+def correct(
+    ds: xr.Dataset,
+    band: SensorBand,
+    kernel: xr.DataArray,
+    device: str,
+    rho_toa: xr.DataArray | None = None,
+) -> tuple[xr.DataArray, xr.DataArray]:
+    """Invert one scene with *kernel* and return ``(rho_s_est, rho_unif)``.
+
+    The Dataset handed to the modules is rebuilt from the radiative
+    quantities alone: :class:`Unif2Surface` writes its output under the
+    name ``rho_s``, which is also the name of the ground truth, so a
+    scene carrying both would lose the truth to the estimate.
+
+    Would be deleted by: an ``output_var=`` argument on ``PSFConvModule``,
+    or an output named ``rho_s_est``.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Scene carrying ``rho_toa`` and the six radiative quantities.
+    band : SensorBand
+        Band being corrected.
+    kernel : xr.DataArray
+        Frozen PSF kernel to deconvolve with.
+    device : str
+        Torch device for the convolution.
+    rho_toa : xr.DataArray or None
+        Measured TOA reflectance, when it must come from a different
+        atmospheric state than the scalar terms in *ds*.  Defaults to
+        ``ds["rho_toa"]``.
+
+    Returns
+    -------
+    tuple[xr.DataArray, xr.DataArray]
+        The retrieved surface reflectance and the uniform reflectance.
+    """
+    measured = ds["rho_toa"] if rho_toa is None else rho_toa
+    trimmed = xr.Dataset(
+        {
+            "rho_toa": measured.squeeze(drop=True),
+            **{
+                var: ds[var].squeeze(drop=True)
+                for var in RADIATIVE_VARS
+                if var in ds
+            },
+        }
+    )
+
+    scene = Toa2Unif()(ImageDict({band: trimmed}))
+    model = Unif2Surface(
+        psf_dict=PSFDict.from_kernels({band: kernel}), device=device
+    )
+    model.eval()
+    scene = model(scene)
+    return scene[band]["rho_s"], scene[band]["rho_unif"]
+
+
+def radial_rmse(
+    pred: xr.DataArray,
+    truth: xr.DataArray,
+    mask_on: xr.DataArray,
+    device: str,
+) -> float:
+    """Radial RMSE between *pred* and *truth*, masked on *mask_on*.
+
+    ``Metric`` only accepts tensors, so every caller repeats the same
+    four ``.adjeff.to_tensor().to(device)`` conversions.  The shape guard
+    matters too: a leftover singleton dimension on one operand would be
+    silently broadcast by the metric and yield a meaningless number
+    rather than an error.
+
+    Would be deleted by: ``Metric`` accepting DataArrays, or an accessor
+    ``pred.adjeff.rmse(truth, mask=mask_on)``.
+
+    Raises
+    ------
+    ValueError
+        If the three arrays do not share the same shape.
+    """
+    if not pred.shape == truth.shape == mask_on.shape:
+        raise ValueError(
+            f"Shape mismatch: pred {pred.shape}, truth {truth.shape}, "
+            f"mask {mask_on.shape}. Extra dimensions were not squeezed."
+        )
+    return float(
+        Metric.RMSE_RAD(
+            pred.adjeff.to_tensor().to(device),
+            truth.adjeff.to_tensor().to(device),
+            truth.adjeff.dists.to(device),
+            mask_on.adjeff.to_tensor().to(device),
+        )
+    )
