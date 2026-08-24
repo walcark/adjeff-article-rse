@@ -107,12 +107,14 @@ def main() -> None:
         rho_s_gt = scene[BAND]["rho_s"]
         rho_unif_da = scene[BAND]["rho_unif"]
 
-        # Run GG model first, then Gauss-330 (rho_unif is never overwritten)
-        model_gg(scene)
-        rho_s_gg_da = scene[BAND]["rho_s"]
+        # SceneModule.forward() shallow-copies its input, so a prediction
+        # only ever exists in the returned scene.  Reading it back from
+        # `scene` would hand out the untouched ground truth instead.
+        scene_gg = model_gg(scene)
+        rho_s_gg_da = scene_gg[BAND]["rho_s"]
 
-        model_gauss330(scene)
-        rho_s_g330_da = scene[BAND]["rho_s"]
+        scene_gauss = model_gauss330(scene)
+        rho_s_g330_da = scene_gauss[BAND]["rho_s"]
 
         r, v_s = sym_profile(rho_s_gt)
         _, v_unif = sym_profile(rho_unif_da)
