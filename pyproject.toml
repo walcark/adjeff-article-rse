@@ -22,10 +22,21 @@ platforms = ["linux-64"]
 
 [tool.pixi.pypi-dependencies]
 adjeff-article-rse = { path = ".", editable = true }
-# Pinned: figures in this repo are reproduced against this exact release.
-adjeff = "==0.6.0"
 # Used lazily by adjeff's MAJA loader; PyPI-only, no conda-forge build.
 sensorsio = ">=1.0.2"
+
+# Where adjeff comes from, as two mutually exclusive features.
+#
+# `release` is what the article claims: the figures were reproduced
+# against this exact PyPI release, and it is the only one a reader of the
+# paper needs.  `local` builds adjeff from a sibling checkout so that a
+# change can be smoke-tested before it is tagged, which is what breaks
+# the chicken-and-egg between the release and this repository's pin.
+[tool.pixi.feature.release.pypi-dependencies]
+adjeff = "==0.6.0"
+
+[tool.pixi.feature.local.pypi-dependencies]
+adjeff = { path = "../Adjeff", editable = true }
 
 # Conda-only deps that adjeff needs but cannot declare on PyPI (smartg pulls
 # luts and geoclide transitively), plus what this repo imports directly.
@@ -47,6 +58,12 @@ cuda-nvcc = "12.9.*"
 
 [tool.pixi.system-requirements]
 cuda = "12.9"
+
+# `local` needs ../Adjeff next to this repository; it is a development
+# environment and is not required to reproduce the figures.
+[tool.pixi.environments]
+default = ["release"]
+local = ["local"]
 
 # ── Tâches ───────────────────────────────────────────────────────────────────
 [tool.pixi.tasks]
