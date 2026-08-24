@@ -153,7 +153,11 @@ def run_one(
 def build_parser() -> argparse.ArgumentParser:
     """Return the parser for the sweep options of this figure family."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--figure", required=True, help="Output figure name.")
+    parser.add_argument(
+        "--figure",
+        default="figure7_17",
+        help="Output figure name (default: the script name).",
+    )
     parser.add_argument("--aot", nargs="+", type=float, default=[0.4])
     parser.add_argument("--rh", type=float, default=50.0)
     parser.add_argument("--h", nargs="+", type=float, default=[0.0])
@@ -235,6 +239,14 @@ def main() -> None:
     run, args = parse_run(__doc__.splitlines()[0], build_parser())
     run = run.resolve(n=N, res_km=RES_KM)
     use_article_style()
+
+    # A sweep is what this script draws, so a bare `--smoke` has nothing
+    # to plot.  Give it the smallest one rather than making the smoke
+    # runner carry a table of per-script arguments.
+    if run.smoke and not any(
+        len(getattr(args, name)) > 1 for name in SWEEPABLE
+    ):
+        args.aot = [0.1, 0.5]
 
     sweep_var, sweep_vals = detect_sweep(args)
 
