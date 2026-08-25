@@ -11,11 +11,11 @@ from __future__ import annotations
 
 import matplotlib.pyplot as plt
 
-from adjeff.api import make_model, optimize_adam_lbfgs
+from adjeff.api import make_model
 from adjeff.core import GaussPSF, PSFGrid, SensorBand, psf_tree
 from adjeff.core._psf import PSFModule
 from adjeff.modules.models import Unif2Surface
-from adjeff.optim import Loss, Metric, TrainingImages
+from adjeff.optim import Loss, Metric, TrainingImages, fit
 
 from .runconfig import RunConfig
 from .scenes import DISK_RADII, disk_scenes
@@ -67,8 +67,8 @@ def psf_comparison_figure(
         init_parameters=init_parameters,
         device=run.device,
     )
-    tree = optimize_adam_lbfgs(
-        model, train_images, Loss(Metric.RMSE_RAD), device=run.device
+    tree = fit(
+        model, train_images, loss=Loss(Metric.RMSE_RAD), device=run.device
     )
 
     model_fitted = Unif2Surface(kernels=tree, device=run.device)

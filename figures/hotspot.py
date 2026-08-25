@@ -124,7 +124,6 @@ import xarray as xr
 from adjeff.api import (
     make_full_config,
     make_model,
-    optimize_adam_lbfgs,
     run_forward_pipeline,
 )
 from adjeff.core import (
@@ -136,12 +135,11 @@ from adjeff.core import (
     psf_kernel,
 )
 from adjeff.modules.models import Unif2Surface
-from adjeff.optim import Loss, Metric, TrainingImages
+from adjeff.optim import Loss, Metric, TrainingImages, fit
 from adjeff.utils import CacheStore
 from adjeff_article_1.runconfig import RunConfig, parse_run
 from adjeff_article_1.shim import (
     correct,
-    fitted_params,
     radial_rmse,
     sym_profile,
     wl_to_band,
@@ -991,14 +989,14 @@ def train(
         init_parameters={"sigma": 0.1, "gamma": 1.0},
         device=run.device,
     )
-    tree = optimize_adam_lbfgs(
+    tree = fit(
         model,
         TrainingImages(images=images, weights=[1.0] * len(images)),
-        Loss(Metric.RMSE_RAD),
+        loss=Loss(Metric.RMSE_RAD),
         device=run.device,
     )
     kernel = psf_kernel(tree, band).squeeze(drop=True)
-    params = fitted_params(model)
+    params = model.psf_params(band)
 
     # Joint training over six 3999x3999 landscapes is memory hungry.
     # The model is released before returning so that a second training

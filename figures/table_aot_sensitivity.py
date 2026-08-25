@@ -50,7 +50,6 @@ import xarray as xr
 from adjeff.api import (
     make_full_config,
     make_model,
-    optimize_adam_lbfgs,
     run_forward_pipeline,
 )
 from adjeff.core import (
@@ -61,7 +60,7 @@ from adjeff.core import (
     gaussian_image_dict,
 )
 from adjeff.modules.models import Unif2Surface
-from adjeff.optim import Loss, Metric, TrainingImages
+from adjeff.optim import Loss, Metric, TrainingImages, fit
 from adjeff.utils import CacheStore
 from adjeff_article_1.runconfig import RunConfig, parse_run
 from adjeff.core import psf_kernel
@@ -221,10 +220,10 @@ def run_band(
         init_parameters={"sigma": 0.1, "gamma": 1.0},
         device=run.device,
     )
-    tree = optimize_adam_lbfgs(
+    tree = fit(
         model,
         TrainingImages(images=scenes, weights=[1.0] * len(scenes)),
-        Loss(Metric.RMSE_RAD),
+        loss=Loss(Metric.RMSE_RAD),
         device=run.device,
     )
 

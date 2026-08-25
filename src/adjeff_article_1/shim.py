@@ -20,7 +20,6 @@ from adjeff.optim import Metric
 __all__ = [
     "RADIATIVE_VARS",
     "correct",
-    "fitted_params",
     "radial_rmse",
     "select_scalar",
     "sym_profile",
@@ -213,32 +212,3 @@ def radial_rmse(
             mask_on.adjeff.to_tensor().to(device),
         )
     )
-
-
-def fitted_params(model: object) -> dict[str, float]:
-    """Return the fitted PSF parameters of *model*, or an empty dict.
-
-    The values live on the ``PSFModule`` held by the model, and neither
-    the model exposes them: the only way in is
-    to walk ``model.modules()`` looking for anything that answers
-    ``param_dict``.
-
-    Would be deleted by: ``model.psf_params(band)`` upstream.
-
-    Parameters
-    ----------
-    model : object
-        Trained model, typically a ``Unif2Surface``.
-
-    Returns
-    -------
-    dict[str, float]
-        Parameter values, empty when the PSF is not parametric.
-    """
-    for obj in getattr(model, "modules", lambda: [])():
-        fn = getattr(obj, "param_dict", None)
-        if callable(fn):
-            params = fn()
-            if params:
-                return dict(params)
-    return {}

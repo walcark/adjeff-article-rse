@@ -19,10 +19,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
-from adjeff.api import make_full_config, make_model, optimize_adam_lbfgs
+from adjeff.api import make_full_config, make_model
 from adjeff.core import ImageDict, KingPSF, SensorBand, psf_kernel
 from adjeff.modules.models import Unif2Surface
-from adjeff.optim import Loss, Metric, TrainingImages
+from adjeff.optim import Loss, Metric, TrainingImages, fit
 from adjeff_article_1.runconfig import RunConfig, parse_run
 from adjeff_article_1.scenes import disk_scenes
 from adjeff_article_1.shim import wl_to_band
@@ -107,10 +107,10 @@ def optimised_kernel(
         init_parameters={"sigma": 0.1, "gamma": 1.0},
         device=run.device,
     )
-    tree = optimize_adam_lbfgs(
+    tree = fit(
         model,
         TrainingImages(images=scenes, weights=[1.0] * len(scenes)),
-        Loss(Metric.RMSE_RAD),
+        loss=Loss(Metric.RMSE_RAD),
         device=run.device,
     )
     return psf_kernel(tree, band).squeeze()
