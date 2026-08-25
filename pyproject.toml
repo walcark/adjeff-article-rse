@@ -33,7 +33,7 @@ sensorsio = ">=1.0.2"
 # change can be smoke-tested before it is tagged, which is what breaks
 # the chicken-and-egg between the release and this repository's pin.
 [tool.pixi.feature.release.pypi-dependencies]
-adjeff = "==0.7.0"
+adjeff = "==0.8.0"
 
 [tool.pixi.feature.local.pypi-dependencies]
 adjeff = { path = "../Adjeff", editable = true }
