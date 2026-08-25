@@ -12,60 +12,18 @@ from __future__ import annotations
 import adjeff  # noqa: F401  (registers the .adjeff accessor)
 import numpy as np
 import xarray as xr
-from adjeff.core import ImageDict, S2Band, SensorBand, psf_tree
+from adjeff.core import ImageDict, SensorBand, psf_tree
 from adjeff.modules.classic import Toa2Unif
 from adjeff.modules.models import Unif2Surface
+from adjeff.modules.samplers import RADIATIVE_VARS
 from adjeff.optim import Metric
 
 __all__ = [
-    "RADIATIVE_VARS",
     "correct",
     "radial_rmse",
     "select_scalar",
     "sym_profile",
-    "wl_to_band",
 ]
-
-# The six quantities of the 5S formula.  adjeff produces them and every
-# module declares them one by one, but never publishes the list.
-# Would be deleted by: ``adjeff.modules.samplers.RADIATIVE_VARS``.
-RADIATIVE_VARS = (
-    "tdir_up",
-    "tdif_up",
-    "tdir_down",
-    "tdif_down",
-    "rho_atm",
-    "sph_alb",
-)
-
-# SensorBand carries wl_nm but offers no reverse lookup, so every script
-# that names a band by its wavelength has to build this table itself.
-# Would be deleted by: ``S2Band.from_wl(665.0)``.
-_WL_TO_BAND: dict[float, SensorBand] = {b.wl_nm: b for b in S2Band}
-
-
-def wl_to_band(wl_nm: float) -> SensorBand:
-    """Return the Sentinel-2 band centred on *wl_nm*.
-
-    Would be deleted by: ``S2Band.from_wl(wl_nm)``.
-
-    Parameters
-    ----------
-    wl_nm : float
-        Central wavelength in nanometres, as written on the command line.
-
-    Raises
-    ------
-    KeyError
-        If no band has that exact central wavelength.
-    """
-    try:
-        return _WL_TO_BAND[float(wl_nm)]
-    except KeyError:
-        known = ", ".join(f"{w:.0f}" for w in sorted(_WL_TO_BAND))
-        raise KeyError(
-            f"No Sentinel-2 band at {wl_nm} nm. Known: {known}."
-        ) from None
 
 
 def sym_profile(da: xr.DataArray) -> tuple[np.ndarray, np.ndarray]:

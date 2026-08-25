@@ -39,7 +39,7 @@ def main() -> None:
     use_article_style()
 
     scenes = gauss_scenes(BAND, run)
-    train_images = TrainingImages(images=scenes, weights=[1.0] * len(scenes))
+    train_images = TrainingImages(images=scenes)
 
     psf_modules = gg_parameter_grid(BAND, run, run.n_samples)
 

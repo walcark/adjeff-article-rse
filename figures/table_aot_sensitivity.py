@@ -55,21 +55,21 @@ from adjeff.api import (
 from adjeff.core import (
     ImageDict,
     KingPSF,
+    S2Band,
     SensorBand,
     disk_image_dict,
     gaussian_image_dict,
 )
 from adjeff.modules.models import Unif2Surface
+from adjeff.modules.samplers import RADIATIVE_VARS
 from adjeff.optim import Loss, Metric, TrainingImages, fit
 from adjeff.utils import CacheStore
 from adjeff_article_1.runconfig import RunConfig, parse_run
 from adjeff.core import psf_kernel
 from adjeff_article_1.shim import (
-    RADIATIVE_VARS,
     correct,
     radial_rmse,
     select_scalar,
-    wl_to_band,
 )
 
 RES_KM = 0.05
@@ -184,7 +184,7 @@ def run_band(
     cache: CacheStore,
 ) -> list[dict[str, float]]:
     """Simulate, optimise and evaluate every AOT case for one wavelength."""
-    band = wl_to_band(wl)
+    band = S2Band.from_wl(wl)
     aots = [
         args.aot_ref - args.aot_delta,
         args.aot_ref,
@@ -222,7 +222,7 @@ def run_band(
     )
     tree = fit(
         model,
-        TrainingImages(images=scenes, weights=[1.0] * len(scenes)),
+        TrainingImages(images=scenes),
         loss=Loss(Metric.RMSE_RAD),
         device=run.device,
     )

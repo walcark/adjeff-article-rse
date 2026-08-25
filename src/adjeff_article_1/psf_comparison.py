@@ -56,7 +56,7 @@ def psf_comparison_figure(
     use_article_style()
 
     scenes = disk_scenes(band, run)
-    train_images = TrainingImages(images=scenes, weights=[1.0] * len(scenes))
+    train_images = TrainingImages(images=scenes)
 
     model = make_model(
         Unif2Surface,

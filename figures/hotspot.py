@@ -129,6 +129,7 @@ from adjeff.api import (
 from adjeff.core import (
     ImageDict,
     KingPSF,
+    S2Band,
     SensorBand,
     disk_image_dict,
     gaussian_image_dict,
@@ -142,7 +143,6 @@ from adjeff_article_1.shim import (
     correct,
     radial_rmse,
     sym_profile,
-    wl_to_band,
 )
 from adjeff_article_1.style import save
 
@@ -991,7 +991,7 @@ def train(
     )
     tree = fit(
         model,
-        TrainingImages(images=images, weights=[1.0] * len(images)),
+        TrainingImages(images=images),
         loss=Loss(Metric.RMSE_RAD),
         device=run.device,
     )
@@ -1328,7 +1328,7 @@ def main() -> None:
         args.uniform_n = 99
         args.uniform_nr = 20
 
-    band = wl_to_band(args.wl)
+    band = S2Band.from_wl(args.wl)
     if not args.modis_band:
         args.modis_band = _WL_TO_MODIS_BAND.get(args.wl, 1)
     run.figs_dir.mkdir(parents=True, exist_ok=True)

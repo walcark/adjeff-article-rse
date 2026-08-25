@@ -61,7 +61,7 @@ def main() -> None:
     im = None
     for ax, (title, images) in zip(axes.flat, train_configs):
         losses = loss_landscape(
-            train_images=TrainingImages(images=images, weights=[1.0] * len(images)),
+            train_images=TrainingImages(images=images),
             band=BAND,
             psf_modules=psf_modules,
             loss=loss_fn,

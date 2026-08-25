@@ -20,12 +20,12 @@ import numpy as np
 import xarray as xr
 
 from adjeff.api import make_full_config, make_model
-from adjeff.core import ImageDict, KingPSF, SensorBand, psf_kernel
+from adjeff.core import ImageDict, KingPSF, S2Band, SensorBand, psf_kernel
 from adjeff.modules.models import Unif2Surface
 from adjeff.optim import Loss, Metric, TrainingImages, fit
 from adjeff_article_1.runconfig import RunConfig, parse_run
 from adjeff_article_1.scenes import disk_scenes
-from adjeff_article_1.shim import wl_to_band
+
 from adjeff_article_1.style import (
     font,
     save,
@@ -109,7 +109,7 @@ def optimised_kernel(
     )
     tree = fit(
         model,
-        TrainingImages(images=scenes, weights=[1.0] * len(scenes)),
+        TrainingImages(images=scenes),
         loss=Loss(Metric.RMSE_RAD),
         device=run.device,
     )
@@ -131,7 +131,7 @@ def run_one(
     def at(name: str) -> float:
         return value if sweep_var == name else getattr(args, name)[0]
 
-    band = wl_to_band(at("wl"))
+    band = S2Band.from_wl(at("wl"))
     cfg = make_full_config(
         bands=[band],
         aot=[at("aot")],
