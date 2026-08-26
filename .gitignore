@@ -14,3 +14,11 @@ __pycache__/
 
 # ignore smartg auxdata
 data/smartg_auxdata
+
+# credentials must never be committed: the loader reads them from
+# ~/.config/adjeff-article/credentials.toml, from the environment or
+# from ~/.netrc, all outside this tree.  These patterns are a net for a
+# file created here by mistake, not a supported location.
+credentials.toml
+*credentials*.toml
+.netrc

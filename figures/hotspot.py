@@ -139,6 +139,11 @@ from adjeff.core import (
 from adjeff.modules.models import Unif2Surface
 from adjeff.optim import Loss, Metric, TrainingImages, fit
 from adjeff.utils import CacheStore
+from adjeff_article_1.credentials import (
+    Credentials,
+    add_credentials_arguments,
+    load_credentials,
+)
 from adjeff_article_1.runconfig import RunConfig, parse_run
 from adjeff_article_1.correction import correct
 from adjeff_article_1.style import save
@@ -418,6 +423,18 @@ def anisotropy(
 # ----------------------------------------------------------------------
 
 
+#: Filled once by `main`, read by every request below.  A module-level
+#: value rather than a parameter threaded through fifteen call sites,
+#: none of which have anything to do with authentication.
+_CREDENTIALS = Credentials()
+
+
+def _set_credentials(credentials: Credentials) -> None:
+    """Install the credentials every ORNL request will carry."""
+    global _CREDENTIALS
+    _CREDENTIALS = credentials
+
+
 def _ornl_get(path: str, **params: object) -> dict:
     """Return the decoded JSON of one ORNL MODIS web service call.
 
@@ -430,12 +447,23 @@ def _ornl_get(path: str, **params: object) -> dict:
     url = f"{ORNL_ROOT}/{path}"
     if params:
         url += "?" + urllib.parse.urlencode(params)
-    request = urllib.request.Request(
-        url, headers={"Accept": "application/json"}
-    )
+    headers = {"Accept": "application/json", **_CREDENTIALS.auth_header()}
+    request = urllib.request.Request(url, headers=headers)
     try:
         with urllib.request.urlopen(request, timeout=120) as response:
             payload = response.read()
+    except urllib.error.HTTPError as exc:
+        if exc.code in (401, 403):
+            raise RuntimeError(
+                f"ORNL MODIS refused the request ({exc.code}). "
+                f"Credentials came from {_CREDENTIALS.source}; see "
+                "adjeff_article_1.credentials for where they are read from."
+            ) from exc
+        raise RuntimeError(
+            f"ORNL MODIS service answered {exc.code} for {url}. "
+            "A 500 is an outage on their side, not a problem with your "
+            "account: check https://modis.ornl.gov and try again later."
+        ) from exc
     except (urllib.error.URLError, TimeoutError) as exc:
         raise RuntimeError(f"ORNL MODIS service unreachable: {exc}") from exc
     try:
@@ -1311,6 +1339,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--uniform-n", type=int, default=399)
     parser.add_argument("--uniform-nr", type=int, default=60)
     parser.add_argument("--nr", type=int, default=500)
+    add_credentials_arguments(parser)
     return parser
 
 
@@ -1318,6 +1347,10 @@ def main() -> None:
     """Quantify the PSF degradation caused by real MODIS BRDFs."""
     run, args = parse_run(__doc__.splitlines()[0], build_parser())
     run = run.resolve(n=3999, res_km=0.05, cache_dir="/tmp/adjeff-hotspot")
+
+    # Read once, here, rather than per request: a figure that needs an
+    # account should fail on the first call and not on the hundredth.
+    _set_credentials(load_credentials(args))
 
     # The study is a six-landscape joint training on top of one
     # Lambertian and three RTLS forward pipelines: a smoke run keeps one
