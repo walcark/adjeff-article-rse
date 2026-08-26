@@ -126,6 +126,7 @@ from adjeff.api import (
     make_model,
     run_forward_pipeline,
 )
+from adjeff.analysis import rmse
 from adjeff.core import (
     ImageDict,
     KingPSF,
@@ -139,11 +140,7 @@ from adjeff.modules.models import Unif2Surface
 from adjeff.optim import Loss, Metric, TrainingImages, fit
 from adjeff.utils import CacheStore
 from adjeff_article_1.runconfig import RunConfig, parse_run
-from adjeff_article_1.shim import (
-    correct,
-    radial_rmse,
-    sym_profile,
-)
+from adjeff_article_1.shim import correct
 from adjeff_article_1.style import save
 
 plt.style.use(["science", "nature"])
@@ -1010,6 +1007,12 @@ def train(
     return kernel, params
 
 
+def _sym(da: xr.DataArray) -> tuple[np.ndarray, np.ndarray]:
+    """Return ``(r, values)`` of a mirrored radial profile, for plotting."""
+    profile = da.squeeze().adjeff.radial(symmetric=True)
+    return profile.coords["r"].values, profile.values
+
+
 def evaluate(
     lamb_eval: list[tuple[str, ImageDict]],
     rtls_eval: dict[str, list[tuple[str, ImageDict]]],
@@ -1038,15 +1041,14 @@ def evaluate(
             "truth": truth, "unif": lamb_unif, "lamb": lamb_est
         }
 
-        base = radial_rmse(lamb_est, truth, lamb_unif, run.device)
+        base = rmse(lamb_est, truth, mask=lamb_unif, radial=True, device=run.device)
         rows.append(
             {
                 "landscape": name,
                 "rank": "lambertian",
                 "site": "-",
                 "a": 1.0,
-                "no_corr": radial_rmse(
-                    lamb_unif, truth, lamb_unif, run.device),
+                "no_corr": rmse(lamb_unif, truth, mask=lamb_unif, radial=True, device=run.device),
                 "corr": base,
                 "corr_unbiased": base,
                 "eps_total": 0.0,
@@ -1067,10 +1069,9 @@ def evaluate(
                 "rank": rank,
                 "site": by_rank[rank].site,
                 "a": float(by_rank[rank].a),
-                "no_corr": radial_rmse(unif, truth, unif, run.device),
-                "corr": radial_rmse(est, truth, unif, run.device),
-                "corr_unbiased": radial_rmse(
-                    flat, truth, unif, run.device),
+                "no_corr": rmse(unif, truth, mask=unif, radial=True, device=run.device),
+                "corr": rmse(est, truth, mask=unif, radial=True, device=run.device),
+                "corr_unbiased": rmse(flat, truth, mask=unif, radial=True, device=run.device),
             }
             # eps_total is what an operational chain actually suffers;
             # eps_psf is what is left once the scalar 5S bias, measured
@@ -1217,7 +1218,7 @@ def plot_scale(
         for row in selected.itertuples()
     ]
     for da, label, style in curves:
-        r, v = sym_profile(da)
+        r, v = _sym(da)
         ax.plot(r, v, label=label, **style)
     ax.set_xlim(-lim, lim)
     ax.set_xlabel(r"$r$ [km]")
@@ -1238,7 +1239,7 @@ def plot_scale(
             )
         )
     for da, label, style in errors:
-        r, v = sym_profile(da - truth)
+        r, v = _sym(da - truth)
         ax.plot(r, v, label=label, **style)
     ax.axhline(0.0, color="k", lw=0.5)
     ax.set_xlim(-lim, lim)

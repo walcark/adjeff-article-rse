@@ -10,6 +10,8 @@ whole comparison lives here and each figure script declares its kernel.
 from __future__ import annotations
 
 import matplotlib.pyplot as plt
+import numpy as np
+import xarray as xr
 
 from adjeff.api import make_model
 from adjeff.core import GaussPSF, PSFGrid, SensorBand, psf_tree
@@ -19,13 +21,18 @@ from adjeff.optim import Loss, Metric, TrainingImages, fit
 
 from .runconfig import RunConfig
 from .scenes import DISK_RADII, disk_scenes
-from .shim import sym_profile
 from .style import font, panel_title, save, style_axes, use_article_style
 
 __all__ = ["GAUSS_REFERENCE_KM", "psf_comparison_figure"]
 
 # Gaussian width used as the fixed reference kernel, in km.
 GAUSS_REFERENCE_KM = 0.330
+
+
+def _sym(da: xr.DataArray) -> tuple[np.ndarray, np.ndarray]:
+    """Return ``(r, values)`` of a mirrored radial profile, for plotting."""
+    profile = da.squeeze().adjeff.radial(symmetric=True)
+    return profile.coords["r"].values, profile.values
 
 
 def psf_comparison_figure(
@@ -89,10 +96,10 @@ def psf_comparison_figure(
         fitted = model_fitted(scene)[band]["rho_s"]
         reference = model_reference(scene)[band]["rho_s"]
 
-        r, v_truth = sym_profile(scene[band]["rho_s"])
-        _, v_unif = sym_profile(scene[band]["rho_unif"])
-        _, v_reference = sym_profile(reference)
-        _, v_fitted = sym_profile(fitted)
+        r, v_truth = _sym(scene[band]["rho_s"])
+        _, v_unif = _sym(scene[band]["rho_unif"])
+        _, v_reference = _sym(reference)
+        _, v_fitted = _sym(fitted)
 
         opts = dict(linewidth=1.3)
         ax.plot(r, v_truth, label=r"$\rho_{s}$", **opts)

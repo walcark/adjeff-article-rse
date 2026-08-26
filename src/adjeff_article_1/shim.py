@@ -16,37 +16,10 @@ from adjeff.core import ImageDict, SensorBand, psf_tree
 from adjeff.modules.classic import Toa2Unif
 from adjeff.modules.models import Unif2Surface
 from adjeff.modules.samplers import RADIATIVE_VARS
-from adjeff.optim import Metric
 
 __all__ = [
     "correct",
-    "radial_rmse",
-    "sym_profile",
 ]
-
-
-def sym_profile(da: xr.DataArray) -> tuple[np.ndarray, np.ndarray]:
-    """Return a symmetric radial profile ``(r, values)`` for plotting.
-
-    Mirrors the azimuthal mean around ``r = 0`` so that a profile can be
-    drawn across the full transect rather than on the positive half only.
-
-    Would be deleted by: ``da.adjeff.radial(symmetric=True)``.
-
-    Parameters
-    ----------
-    da : xr.DataArray
-        Two-dimensional field, extra singleton dimensions allowed.
-
-    Returns
-    -------
-    tuple[np.ndarray, np.ndarray]
-        Radii from ``-r_max`` to ``+r_max`` and the mirrored values.
-    """
-    prof = da.squeeze().adjeff.radial()
-    r = prof.coords["r"].values
-    v = prof.values
-    return np.concatenate([-r[::-1], r]), np.concatenate([v[::-1], v])
 
 
 def correct(
@@ -107,38 +80,3 @@ def correct(
     return scene[band]["rho_s"], scene[band]["rho_unif"]
 
 
-def radial_rmse(
-    pred: xr.DataArray,
-    truth: xr.DataArray,
-    mask_on: xr.DataArray,
-    device: str,
-) -> float:
-    """Radial RMSE between *pred* and *truth*, masked on *mask_on*.
-
-    ``Metric`` only accepts tensors, so every caller repeats the same
-    four ``.adjeff.to_tensor().to(device)`` conversions.  The shape guard
-    matters too: a leftover singleton dimension on one operand would be
-    silently broadcast by the metric and yield a meaningless number
-    rather than an error.
-
-    Would be deleted by: ``Metric`` accepting DataArrays, or an accessor
-    ``pred.adjeff.rmse(truth, mask=mask_on)``.
-
-    Raises
-    ------
-    ValueError
-        If the three arrays do not share the same shape.
-    """
-    if not pred.shape == truth.shape == mask_on.shape:
-        raise ValueError(
-            f"Shape mismatch: pred {pred.shape}, truth {truth.shape}, "
-            f"mask {mask_on.shape}. Extra dimensions were not squeezed."
-        )
-    return float(
-        Metric.RMSE_RAD(
-            pred.adjeff.to_tensor().to(device),
-            truth.adjeff.to_tensor().to(device),
-            truth.adjeff.dists.to(device),
-            mask_on.adjeff.to_tensor().to(device),
-        )
-    )
