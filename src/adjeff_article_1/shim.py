@@ -21,7 +21,6 @@ from adjeff.optim import Metric
 __all__ = [
     "correct",
     "radial_rmse",
-    "select_scalar",
     "sym_profile",
 ]
 
@@ -48,33 +47,6 @@ def sym_profile(da: xr.DataArray) -> tuple[np.ndarray, np.ndarray]:
     r = prof.coords["r"].values
     v = prof.values
     return np.concatenate([-r[::-1], r]), np.concatenate([v[::-1], v])
-
-
-def select_scalar(obj: xr.Dataset | xr.DataArray, **coords: float):
-    """Select one point of a swept dimension and drop every singleton dim.
-
-    adjeff coerces scalar configuration values to length-one arrays, so
-    its outputs carry singleton ``aot``, ``rh``, ``h`` and ``href``
-    dimensions that the caller has to peel off before any comparison.
-
-    Would be deleted by: ``psf_kernel(tree, band).sel(aot=0.4)`` losing its singleton dims,
-    configs that keep a scalar scalar.
-
-    Parameters
-    ----------
-    obj : xr.Dataset or xr.DataArray
-        Output of a sampler, a pipeline or a frozen PSF tree.
-    **coords
-        Coordinate values to select, matched to the nearest neighbour.
-
-    Returns
-    -------
-    xr.Dataset or xr.DataArray
-        Same type as *obj*, without the selected or singleton dimensions.
-    """
-    if coords:
-        obj = obj.sel(coords, method="nearest", drop=True)
-    return obj.squeeze(drop=True)
 
 
 def correct(

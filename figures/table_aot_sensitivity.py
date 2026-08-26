@@ -69,7 +69,6 @@ from adjeff.core import psf_kernel
 from adjeff_article_1.shim import (
     correct,
     radial_rmse,
-    select_scalar,
 )
 
 RES_KM = 0.05
@@ -127,6 +126,29 @@ def build_landscapes(
 
 
 
+def at_aot(
+    obj: xr.Dataset | xr.DataArray, aot: float
+) -> xr.Dataset | xr.DataArray:
+    """Return *obj* at one aerosol load, without its unswept dimensions.
+
+    The aot label is dropped on purpose: this table mixes, in one
+    correction, the TOA reflectance measured at one load with the 5S
+    scalar terms at another and the kernel at a third.  Keeping three
+    conflicting labels would make them impossible to combine, which is
+    what xarray tells you with a MergeError.
+
+    What remains to peel are the parameters a scalar configuration
+    turned into dimensions of length one.  The ``.adjeff`` accessor is
+    registered on DataArray only, so a Dataset is squeezed the plain
+    way.
+    """
+    picked = obj.sel(aot=aot, method="nearest", drop=True)
+    if isinstance(picked, xr.Dataset):
+        singleton = [d for d in picked.dims if picked.sizes[d] == 1]
+        return picked.squeeze(singleton, drop=False)
+    return picked.adjeff.tidy()
+
+
 def evaluate_band(
     scenes: list[ImageDict],
     psf_tree: xr.DataTree,
@@ -152,12 +174,14 @@ def evaluate_band(
                 # aot_true, while the 5S scalar terms are taken at
                 # aot_scalar and the kernel at aot_psf.  Mixing those
                 # three is what isolates the error contributions.
+                # `sel` keeps the aot it picked as a coordinate, and
+                # `tidy` peels the parameters that were never swept.
                 est, unif = correct(
-                    ds=select_scalar(ds, aot=aot_scalar),
+                    ds=at_aot(ds, aot_scalar),
                     band=band,
-                    kernel=select_scalar(psf_kernel(psf_tree, band), aot=aot_psf),
+                    kernel=at_aot(psf_kernel(psf_tree, band), aot_psf),
                     device=device,
-                    rho_toa=select_scalar(ds["rho_toa"], aot=aot_true),
+                    rho_toa=at_aot(ds["rho_toa"], aot_true),
                 )
                 acc[name] += radial_rmse(est, truth, unif, device)
                 if name == "matched":
