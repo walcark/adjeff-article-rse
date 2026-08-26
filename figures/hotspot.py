@@ -139,6 +139,7 @@ from adjeff.core import (
 from adjeff.modules.models import Unif2Surface
 from adjeff.optim import Loss, Metric, TrainingImages, fit
 from adjeff.utils import CacheStore
+from adjeff_article_1.appeears import fetch_mcd43a1 as appeears_fetch
 from adjeff_article_1.credentials import (
     Credentials,
     add_credentials_arguments,
@@ -622,14 +623,50 @@ def load_ensemble(args: argparse.Namespace) -> pd.DataFrame:
         print(f">>> MCD43A1 ensemble read from {path}", flush=True)
         return frame
 
-    print(">>> MCD43A1 ensemble, fetching from the ORNL service",
-          flush=True)
-    frame = fetch_mcd43a1(
-        SITES, args.modis_band, args.start_date, args.end_date
-    )
+    frame = _fetch_ensemble(args)
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
     print(f"    cached to {path}", flush=True)
+    return frame
+
+
+def _fetch_ensemble(args: argparse.Namespace) -> pd.DataFrame:
+    """Fetch the ensemble from whichever service will serve it.
+
+    ORNL is tried first when the source is ``auto``: it needs no account
+    and answers in seconds.  AppEEARS is the fallback because it needs
+    one and works by submitting a task, but it reads the same granules
+    and is up when ORNL's catalogue is not.
+    """
+    source = args.brdf_source
+    if source in ("auto", "ornl"):
+        try:
+            print(">>> MCD43A1 ensemble, from the ORNL service", flush=True)
+            return fetch_mcd43a1(
+                SITES, args.modis_band, args.start_date, args.end_date
+            )
+        except RuntimeError as exc:
+            if source == "ornl":
+                raise
+            print(f"    ORNL did not serve it: {exc}", flush=True)
+            print("    falling back to AppEEARS", flush=True)
+
+    print(">>> MCD43A1 ensemble, from AppEEARS", flush=True)
+    rows = appeears_fetch(
+        load_credentials(args),
+        SITES,
+        args.modis_band,
+        args.start_date,
+        args.end_date,
+        timeout_s=args.appeears_timeout,
+    )
+    frame = pd.DataFrame(rows)
+    # `device.cu` wants the weights relative to the isotropic one.  The
+    # ORNL path derives these itself and the CSV reload derives them when
+    # absent; AppEEARS returns the three absolute weights, so it is
+    # derived here rather than in three places.
+    frame["k1p"] = frame["f_geo"] / frame["f_iso"]
+    frame["k2p"] = frame["f_vol"] / frame["f_iso"]
     return frame
 
 
@@ -1339,6 +1376,20 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--uniform-n", type=int, default=399)
     parser.add_argument("--uniform-nr", type=int, default=60)
     parser.add_argument("--nr", type=int, default=500)
+    parser.add_argument(
+        "--brdf-source",
+        choices=("auto", "ornl", "appeears"),
+        default="auto",
+        help="where the MCD43A1 coefficients come from: ORNL needs no "
+        "account but its catalogue is currently down, AppEEARS needs an "
+        "Earthdata login and works (default: try ORNL, then AppEEARS)",
+    )
+    parser.add_argument(
+        "--appeears-timeout",
+        type=float,
+        default=3600.0,
+        help="seconds to wait for an AppEEARS task (default: one hour)",
+    )
     add_credentials_arguments(parser)
     return parser
 

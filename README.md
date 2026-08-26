@@ -139,11 +139,35 @@ The last step is checked rather than assumed: a file created with the
 default umask is world-readable, and the loader says so. It logs which
 source it used and the username, never the secret.
 
-**A 500 from the ORNL service is not an authentication problem.** It is
-an outage on their side, and no account will get past it; the error
-message now distinguishes the two. Check
-[modis.ornl.gov](https://modis.ornl.gov) before suspecting your
-credentials.
+#### Where the BRDF coefficients come from
+
+Two services carry MCD43A1, and `hotspot` takes `--brdf-source`:
+
+| | account | speed | state |
+| --- | --- | --- | --- |
+| `ornl` | none | seconds | catalogue currently down |
+| `appeears` | Earthdata | ~6 min per fetch | working |
+| `auto` *(default)* | — | — | tries ORNL, falls back to AppEEARS |
+
+The ORNL TESViS service answers `500` to every request touching its
+catalogue: `/products`, `/sites` and `/{product}/bands` all fail, while
+`/networks`, whose answer is a static list, succeeds. The failure is in
+their database layer, and **no account gets past it** — a 500 is an
+outage, not a refusal, and the error message says so.
+
+AppEEARS is LP DAAC's point-sampling service for the same granules. It
+submits a task and collects it once it has run, so a fetch takes minutes
+rather than seconds, and it only happens once: the result is cached to
+`--sites-csv`. Later runs read the CSV and never touch either service.
+
+```bash
+python figures/hotspot.py                          # ORNL, then AppEEARS
+python figures/hotspot.py --brdf-source appeears   # skip the ORNL attempt
+python figures/hotspot.py --refresh-sites          # refetch, ignoring the CSV
+```
+
+Any CSV carrying `site`, `f_iso`, `f_geo` and `f_vol` is accepted, so an
+Earth Engine export or a local granule read feeds the study just as well.
 
 ---
 

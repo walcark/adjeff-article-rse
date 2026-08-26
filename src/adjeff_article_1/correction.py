@@ -49,7 +49,9 @@ def correct(
     Returns
     -------
     tuple[xr.DataArray, xr.DataArray]
-        The retrieved surface reflectance and the uniform reflectance.
+        The retrieved surface reflectance and the uniform reflectance,
+        with any length-one dimension dropped so that they compare
+        directly against a 2-D truth.
     """
     scene = ImageDict({band: ds if rho_toa is None else ds.assign(rho_toa=rho_toa)})
     scene = Toa2Unif()(scene)
@@ -61,4 +63,12 @@ def correct(
     )
     model.eval()
     scene = model(scene)
-    return scene[band]["rho_s_est"], scene[band]["rho_unif"]
+    # Peel the atmospheric dimensions that were never swept.  A scene
+    # built from a single state keeps `aot`, `rh`, `h`, `href`, `vza` and
+    # `sza` as length-one dimensions, which carry nothing and which the
+    # error metrics refuse to broadcast against a plain 2-D truth.  A
+    # caller that tidied its input first sees no change.
+    return (
+        scene[band]["rho_s_est"].squeeze(drop=True),
+        scene[band]["rho_unif"].squeeze(drop=True),
+    )
