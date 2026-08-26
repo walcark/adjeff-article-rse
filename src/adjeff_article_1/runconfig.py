@@ -12,8 +12,13 @@ adjeff version bump.
 from __future__ import annotations
 
 import argparse
+import logging
 from dataclasses import dataclass, replace
 from pathlib import Path
+
+import adjeff
+
+from . import _logging as article_logging
 
 __all__ = ["ARTICLE_ATMOSPHERE", "RunConfig", "add_run_arguments", "parse_run"]
 
@@ -143,6 +148,17 @@ def add_run_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--device", help="torch device (cuda or cpu)")
     parser.add_argument("--figs-dir", type=Path, help="output directory")
     parser.add_argument("--cache-dir", help="adjeff cache root")
+    parser.add_argument(
+        "--log-level",
+        default="info",
+        choices=("debug", "info", "warning", "error"),
+        help="how much adjeff and xsweep report (default: info)",
+    )
+    parser.add_argument(
+        "--log-json",
+        action="store_true",
+        help="one JSON object per line, for a run whose output is collected",
+    )
 
 
 def parse_run(
@@ -167,11 +183,27 @@ def parse_run(
     tuple[RunConfig, argparse.Namespace]
         The resolved run configuration and the full parsed namespace, so
         that scripts can read their own arguments from the latter.
+
+    Notes
+    -----
+    Logging is configured here, from ``--log-level`` and ``--log-json``.
+    A figure script is an application, so it is entitled to; adjeff is a
+    library, so it no longer does it on the script's behalf.
     """
     if parser is None:
         parser = argparse.ArgumentParser(description=description)
     add_run_arguments(parser)
     args = parser.parse_args()
+
+    # adjeff 0.13.0 prints nothing until asked: it stopped configuring
+    # logging for the process it is imported into, which is a library's
+    # business to leave alone.  Turning it on is the application's, and
+    # here that is the figure script.  Every one of them reaches this
+    # function, so this is the one place it needs saying.
+    adjeff.setup_logging(level=args.log_level, json=args.log_json)
+    # This repository has a namespace of its own, which `setup_logging`
+    # knows nothing about; it follows the same level.
+    logging.getLogger(article_logging.ROOT).setLevel(args.log_level.upper())
 
     base = RunConfig.smoke_run() if args.smoke else RunConfig()
     overrides = {
