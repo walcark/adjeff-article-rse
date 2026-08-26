@@ -7,7 +7,13 @@ Everything they share lives in the submodules below:
 - :mod:`.runconfig` grid size and photon budget, plus the ``--smoke``
   mode used to check that a new adjeff release still runs the scripts.
 - :mod:`.scenes` reference atmosphere, training landscapes, PSF grids.
-- :mod:`.shim` stand-ins for primitives adjeff does not expose yet.
+- :mod:`.correction` the article's own inversion experiment, where the
+  PSF is chosen independently of the atmosphere the scene was simulated
+  at.
+- :mod:`.psf_comparison` the figure shared by two of the scripts.
+
+``shim``, which held stand-ins for primitives adjeff did not expose, is
+gone: adjeff 0.11.0 provides all of them.
 
 Only the environment bootstrap is re-exported here.  ``scripts/
 export_smartg_auxdata.py`` imports this package to locate the Smart-G

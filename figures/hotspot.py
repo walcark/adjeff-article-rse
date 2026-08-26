@@ -140,7 +140,7 @@ from adjeff.modules.models import Unif2Surface
 from adjeff.optim import Loss, Metric, TrainingImages, fit
 from adjeff.utils import CacheStore
 from adjeff_article_1.runconfig import RunConfig, parse_run
-from adjeff_article_1.shim import correct
+from adjeff_article_1.correction import correct
 from adjeff_article_1.style import save
 
 plt.style.use(["science", "nature"])

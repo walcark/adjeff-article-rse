@@ -67,7 +67,7 @@ from adjeff.optim import Loss, Metric, TrainingImages, fit
 from adjeff.utils import CacheStore
 from adjeff_article_1.runconfig import RunConfig, parse_run
 from adjeff.core import psf_kernel
-from adjeff_article_1.shim import correct
+from adjeff_article_1.correction import correct
 
 RES_KM = 0.05
 N = 3999
