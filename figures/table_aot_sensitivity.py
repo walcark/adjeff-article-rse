@@ -52,6 +52,7 @@ from adjeff.api import (
     make_model,
     run_forward_pipeline,
 )
+from adjeff.analysis import rmse
 from adjeff.core import (
     ImageDict,
     KingPSF,
@@ -66,10 +67,7 @@ from adjeff.optim import Loss, Metric, TrainingImages, fit
 from adjeff.utils import CacheStore
 from adjeff_article_1.runconfig import RunConfig, parse_run
 from adjeff.core import psf_kernel
-from adjeff_article_1.shim import (
-    correct,
-    radial_rmse,
-)
+from adjeff_article_1.correction import correct
 
 RES_KM = 0.05
 N = 3999
@@ -183,11 +181,9 @@ def evaluate_band(
                     device=device,
                     rho_toa=at_aot(ds["rho_toa"], aot_true),
                 )
-                acc[name] += radial_rmse(est, truth, unif, device)
+                acc[name] += rmse(est, truth, mask=unif, radial=True, device=device)
                 if name == "matched":
-                    acc["no_adj_corr"] += radial_rmse(
-                        unif, truth, unif, device
-                    )
+                    acc["no_adj_corr"] += rmse(unif, truth, mask=unif, radial=True, device=device)
 
         rows.append(
             {
