@@ -4,6 +4,12 @@ For each value of the swept parameter, a KingPSF is optimised on three
 disk training fields (radii 1, 5, 50 km).  The resulting kernels are
 compared on two subplots: radial profile (log scale) and encircled energy.
 
+The encircled energy comes from ``adjeff.analysis.encircled_energy``,
+which reads the cumulated energy at the outer edge of each annulus.  The
+radial profile's own ``cdf`` statistic answers on the bin centres
+instead, half a bin short of the radius the normalisation is taken at, so
+its curve stops just below one.
+
 Usage
 -----
 python figure7_17.py --figure figure7 \\
@@ -19,6 +25,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
+from adjeff.analysis import encircled_energy
 from adjeff.api import make_full_config, make_model
 from adjeff.core import ImageDict, KingPSF, S2Band, SensorBand, psf_kernel
 from adjeff.modules.models import Unif2Surface
@@ -191,7 +198,7 @@ def plot(
 
     for kernel, label in zip(kernels, labels):
         prof = kernel.adjeff.radial()
-        cdf = kernel.adjeff.radial(stat="cdf")
+        cdf = encircled_energy(kernel)
         opts = dict(label=label, linewidth=1.3)
         axes[0].plot(prof.coords["r"].values, prof.values, **opts)
         axes[1].plot(cdf.coords["r"].values, cdf.values, **opts)
