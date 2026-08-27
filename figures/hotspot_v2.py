@@ -31,20 +31,49 @@ when it is brighter towards the sensor than towards the hemisphere, and
 above one in the other direction.  The sign matters: it decides which way
 the retrieval is biased.
 
+The geometry is the other variable
+----------------------------------
+``a`` is not a property of a surface alone: the hemispheric integral
+depends on the sun, the reference reflectance on the sensor.  Measured
+across sun zenith, at nadir view:
+
+=========== ============ ============ ============ =================
+sun zenith  skukuza      libya4       konza        sign
+=========== ============ ============ ============ =================
+10 deg      0.808        0.973        0.845        all below one
+40 deg      0.972        1.010        1.032        two cross over
+60 deg      1.158        1.050        1.262        all above one
+=========== ============ ============ ============ =================
+
+The manuscript's 40 degrees sits almost exactly where the effect
+vanishes, which is why two of the three surfaces cost nothing there.
+Running 10 and 60 as well separates the two readings left open: whether
+the cost follows the *sign* of ``a - 1``, one geometry having them all
+below and the other all above, or its magnitude.
+
 What it produces
 ----------------
-1. ``hotspot_v2_coefficients.csv``: the MODIS coefficients of the three,
-   with their derived weights and diagnostics.
-2. ``hotspot_v2_brdf.png``: the angular shape of the three against a
-   Lambertian, through the principal plane at a fixed sun zenith.
-3. A table of retrieval error, per landscape and averaged, for the
-   Lambertian surface and the three others.  Numbers, not a figure: the
-   comparison is four numbers per landscape.
+Named by geometry and clamp mode, so runs can be compared rather than
+overwrite each other:
+
+1. ``hotspot_v2_coefficients_szaN.csv``: the MODIS coefficients of the
+   three, with their derived weights and diagnostics.
+2. ``hotspot_v2_brdf_szaN.png``: the angular shape of the three against a
+   Lambertian, each divided by its own value in the viewing direction,
+   which is what the simulation applies.
+3. A table of retrieval error per landscape, and the ratio to the
+   Lambertian surface.  Numbers, not a figure.
+
+``disk1`` and ``disk5`` are reported and set aside: their error is the
+edge the deconvolution cannot resolve, twenty times the adjacency error,
+and they discriminate no surface.  See ``UNINFORMATIVE``.
 
 Usage
 -----
-python hotspot_v2.py --smoke       # a few minutes, checks the chain
-python hotspot_v2.py               # the real thing
+python hotspot_v2.py --smoke              # a few minutes, checks the chain
+python hotspot_v2.py --sza 40             # the manuscript's geometry
+python hotspot_v2.py --sza 10 --clamp     # all surfaces below Lambertian
+python hotspot_v2.py --sza 60 --clamp     # all above
 """
 
 from __future__ import annotations
@@ -78,6 +107,21 @@ from hotspot import (
 #: The three surfaces, chosen to bracket Lambertian while keeping under
 #: 1 % of their upward flux where the Ross-Li fit turns negative.
 CHOSEN = ("skukuza-savanna", "libya4-desert", "konza-grassland")
+
+#: Landscapes whose retrieval error is dominated by an edge the
+#: deconvolution cannot resolve rather than by adjacency, and which
+#: therefore discriminate no surface.  A disk of 1 km on a 50 m grid has
+#: a one-pixel edge: its Lambertian error is 0.018 against 0.0009 for a
+#: Gaussian of the same size, twenty times larger, and it swings by 15 %
+#: between two runs that differ only in their random draws.  Measured,
+#: the most anisotropic surface scores 1.08 and 1.21 times the Lambertian
+#: one there, against 5 to 8 everywhere else.
+#:
+#: They stay in the training set, which needs their high frequencies and
+#: must remain the article's.  They are reported and then set aside, on a
+#: criterion that is prior to the result and checkable: whether the
+#: landscape is retrievable at all.
+UNINFORMATIVE = ("disk1", "disk5")
 
 OUTPUT = Path(__file__).resolve().parent.parent / "output"
 
@@ -262,7 +306,15 @@ def plot_brdf(frame: pd.DataFrame, args: argparse.Namespace, path: Path) -> None
         zorder=1,
     )
     for row in frame.itertuples():
-        shape = shape_of(args.sza, np.abs(vza), raa, row.k1p, row.k2p, args.clamp)
+        # Divided by its own value in the viewing direction, which is
+        # what the simulation applies: `scaled_landscape` scales each
+        # surface so the *observed* reflectance matches the Lambertian
+        # one.  Only what leaves towards the hemisphere differs, and the
+        # curves therefore all pass through one at the sensor's angle.
+        shape = (
+            shape_of(args.sza, np.abs(vza), raa, row.k1p, row.k2p, args.clamp)
+            / row.shape_view
+        )
         ax.plot(
             vza,
             shape,
@@ -271,7 +323,12 @@ def plot_brdf(frame: pd.DataFrame, args: argparse.Namespace, path: Path) -> None
             zorder=2,
         )
 
+    ax.axvline(args.vza, color="0.75", linewidth=0.8, linestyle=":", zorder=0)
     ax.axvline(args.sza, color="0.6", linewidth=0.8, zorder=0)
+    ax.annotate(
+        "sensor", xy=(args.vza, 1.0), xytext=(4, 4),
+        textcoords="offset points", fontsize=font(10 / 12), color="0.4",
+    )
     ax.annotate(
         "hotspot",
         xy=(args.sza, ax.get_ylim()[1]),
@@ -281,9 +338,13 @@ def plot_brdf(frame: pd.DataFrame, args: argparse.Namespace, path: Path) -> None
         color="0.4",
     )
     ax.set_xlabel(r"View zenith angle [$^\circ$]", fontsize=font())
-    ax.set_ylabel(r"$1 + k_1' F_1 + k_2' F_2$", fontsize=font())
+    ax.set_ylabel(
+        r"$\left[1 + k_1' F_1 + k_2' F_2\right] \,/\, $ value at sensor",
+        fontsize=font(),
+    )
     ax.set_title(
-        rf"BRDF shape through the principal plane, $\theta_s$ = {args.sza:g}$^\circ$",
+        rf"BRDF shape, normalised at the sensor, $\theta_s$ = {args.sza:g}$^\circ$, "
+        rf"$\theta_v$ = {args.vza:g}$^\circ$",
         fontsize=font(),
         pad=6,
     )
@@ -361,8 +422,14 @@ def simulate(
     )
     pipeline = dict(nr=args.nr, n_ph=run.n_ph)
 
+    # The Lambertian surface has no BRDF, so the clamp cannot change it:
+    # its store is deliberately shared between the two modes.  Recomputing
+    # it per mode gave the reference different random draws, and the two
+    # runs disagreed by 5.6 % on a quantity that is identical by
+    # construction.  That noise was larger than what libya4 and konza
+    # were being measured at.
     print(">>> forward pipeline, Lambertian", flush=True)
-    store = CacheStore(run.cache_dir + "/lambertian")
+    store = CacheStore(lambertian_cache(run))
     lambertian = [
         (name, run_forward_pipeline(image, **cfg, cache=store, **pipeline))
         for name, image in landscapes(band, args, run)
@@ -388,6 +455,18 @@ def simulate(
                 for name, image in landscapes(band, args, run, 1.0 / row.shape_view)
             ]
     return lambertian, rtls
+
+
+def lambertian_cache(run: RunConfig) -> str:
+    """Return the Lambertian store, shared across clamp modes.
+
+    The cache directory carries a `-clamped` suffix so that a clamped run
+    cannot read an unclamped surface back.  The Lambertian scenes are the
+    one exception: nothing about them depends on the clamp, and giving
+    them one store makes the two runs share a reference rather than two
+    noisy estimates of it.
+    """
+    return run.cache_dir.removesuffix("-clamped") + "/lambertian"
 
 
 def retrieval_error(
@@ -453,27 +532,47 @@ def report(
         rows.append(row)
 
     table = pd.DataFrame(rows)
-    mean = table.drop(columns="landscape").mean()
-    mean["landscape"] = "MEAN"
-    table = pd.concat([table, pd.DataFrame([mean])], ignore_index=True)
-
     path.parent.mkdir(parents=True, exist_ok=True)
     table.to_csv(path, index=False)
 
     print("\n>>> radial RMSE of the retrieved surface reflectance\n", flush=True)
     print(table.to_string(index=False, float_format=lambda v: f"{v:.6f}"))
 
-    reference = float(mean["lambertian"])
-    print("\n>>> cost of the Lambertian assumption, on the mean\n", flush=True)
-    print(f"{'surface':<24} {'a':>7} {'RMSE':>10} {'vs Lambertian':>15}")
-    print(f"{'lambertian':<24} {1.0:7.3f} {reference:10.6f} {'-':>15}")
+    informative = [n for n in names if n not in UNINFORMATIVE]
+    surfaces = list(rtls)
+
+    # A mean of ratios rather than a ratio of means: the errors span an
+    # order of magnitude across landscapes, so an arithmetic mean is the
+    # worst landscape and little else.  Each landscape then counts once.
+    print(
+        f"\n>>> ratio to the Lambertian surface, per landscape"
+        f"\n    ({', '.join(UNINFORMATIVE)} set aside: edge-dominated)\n",
+        flush=True,
+    )
+    header = f"{'landscape':<12}" + "".join(f"{s:>24}" for s in surfaces)
+    print(header)
+    for name in names:
+        mark = "  " if name in informative else " *"
+        line = f"{name:<12}"
+        for site in surfaces:
+            line += f"{rtls[site][name] / lambertian[name]:23.2f}x"
+        print(line + mark)
+
+    print(f"\n>>> cost of the Lambertian assumption\n", flush=True)
+    print(
+        f"{'surface':<24} {'a':>7} {'|a-1|':>7} "
+        f"{'mean ratio':>12} {'all six':>10}"
+    )
     for row in frame.itertuples():
-        value = float(mean[row.site])
+        useful = np.mean([rtls[row.site][n] / lambertian[n] for n in informative])
+        every = np.mean([rtls[row.site][n] / lambertian[n] for n in names])
         print(
-            f"{row.site:<24} {row.a:7.3f} {value:10.6f} "
-            f"{100 * (value / reference - 1):+14.1f}%"
+            f"{row.site:<24} {row.a:7.3f} {abs(row.a - 1):7.3f} "
+            f"{useful:11.2f}x {every:9.2f}x"
         )
-    print(f"\n{'no correction':<24} {'-':>7} {float(mean['no_correction']):10.6f}")
+
+    gain = np.mean([no_correction[n] / lambertian[n] for n in informative])
+    print(f"\n{'no correction at all':<24} {'-':>7} {'-':>7} {gain:11.2f}x")
     print(f">>> table written to {path}", flush=True)
     return table
 
@@ -559,8 +658,16 @@ def main() -> None:
     check_clamp_agrees(args.clamp)
     if args.clamp:
         run = run.resolve(cache_dir=run.cache_dir + "-clamped")
+    # The kernel is fitted per geometry, so a sun zenith is a whole run
+    # of its own and must not read another one's cache back.
+    run = run.resolve(cache_dir=f"{run.cache_dir}/sza{args.sza:g}")
 
-    suffix = "_clamped" if args.clamp else ""
+    # The geometry decides how much anisotropy there is to see: at a sun
+    # zenith of 40 degrees the three surfaces sit within 0.03 of
+    # Lambertian and two of them cross it, while at 10 degrees they reach
+    # 0.19 and all sit below.  Runs are named so that the geometries can
+    # be compared rather than overwrite each other.
+    suffix = f"_sza{args.sza:g}" + ("_clamped" if args.clamp else "")
     band = S2Band.from_wl(args.wl)
     frame = selected_surfaces(args)
     write_coefficients(frame, OUTPUT / f"hotspot_v2_coefficients{suffix}.csv")
