@@ -1,6 +1,6 @@
 """PSF sensitivity to atmospheric and geometric parameters (figures 7-17).
 
-For each value of the swept parameter, a KingPSF is optimised on three
+For each value of the swept parameter, a King PSF is optimised on three
 disk training fields (radii 1, 5, 50 km).  The resulting kernels are
 compared on two subplots: radial profile (log scale) and encircled energy.
 
@@ -9,6 +9,15 @@ which reads the cumulated energy at the outer edge of each annulus.  The
 radial profile's own ``cdf`` statistic answers on the bin centres
 instead, half a bin short of the radius the normalisation is taken at, so
 its curve stops just below one.
+
+Panel (b) is normalised on the plane rather than on the grid, so each
+curve stops at the fraction of its energy the 240 km domain actually
+holds: 95.6 % for a kernel fitted at an aerosol optical thickness of 0.1,
+99.4 % at 0.7.  Grid normalisation sends all four to one at the edge,
+which hides that factor of seven and makes the curves converge exactly
+where the range question is asked.  The ceiling is an extrapolation of
+the fitted King beyond the simulated domain, and it is the widest kernel
+whose ceiling is least certain.
 
 Usage
 -----
@@ -24,15 +33,14 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-
 from adjeff.analysis import encircled_energy
 from adjeff.api import make_full_config, make_model
 from adjeff.core import ImageDict, KingPSF, S2Band, SensorBand, psf_kernel
 from adjeff.modules.models import Unif2Surface
 from adjeff.optim import Loss, Metric, TrainingImages, fit
+
 from adjeff_article_1.runconfig import RunConfig, parse_run
 from adjeff_article_1.scenes import disk_scenes
-
 from adjeff_article_1.style import (
     font,
     save,
@@ -40,6 +48,7 @@ from adjeff_article_1.style import (
     use_article_style,
 )
 
+# Fixed parameters
 RES_KM = 0.12
 N = 1999
 
@@ -151,9 +160,7 @@ def run_one(
         vaa=args.vaa,
         species={args.species: 1.0},
     )
-    scenes = disk_scenes(
-        band, run, cfg=cfg, remove_rayleigh=args.remove_rayleigh
-    )
+    scenes = disk_scenes(band, run, cfg=cfg, remove_rayleigh=args.remove_rayleigh)
     return optimised_kernel(band, run, scenes)
 
 
@@ -198,7 +205,7 @@ def plot(
 
     for kernel, label in zip(kernels, labels):
         prof = kernel.adjeff.radial()
-        cdf = encircled_energy(kernel)
+        cdf = encircled_energy(kernel, normalize="plane")
         opts = dict(label=label, linewidth=1.3)
         axes[0].plot(prof.coords["r"].values, prof.values, **opts)
         axes[1].plot(cdf.coords["r"].values, cdf.values, **opts)
@@ -206,14 +213,14 @@ def plot(
     axes[0].set_yscale("log")
     axes[1].set_xscale("log")
     axes[0].set_ylim(y_min, y_max)
-    axes[1].set_ylim(0.0, 1.0)
+    # Room above the highest ceiling: the curves no longer reach one, and
+    # clipping the axis at one would hide the very gap panel (b) is for.
+    axes[1].set_ylim(0.0, 1.02)
 
     # Anchor the decade ticks on y_max: the log locator would otherwise pick a
     # different decade parity from one figure of the series to the next.
     n_decades = round(np.log10(y_max / y_min))
-    axes[0].set_yticks(
-        [y_max * 10.0 ** (-2 * k) for k in range(n_decades // 2 + 1)]
-    )
+    axes[0].set_yticks([y_max * 10.0 ** (-2 * k) for k in range(n_decades // 2 + 1)])
 
     axes[0].set_title(r"(a) PSF", pad=5, fontsize=font())
     axes[1].set_title(r"(b) Encircled Energy", pad=5, fontsize=font())
@@ -243,6 +250,8 @@ def plot(
 
 
 def main() -> None:
+
+    # Parse input parameters
     run, args = parse_run(__doc__.splitlines()[0], build_parser())
     run = run.resolve(n=N, res_km=RES_KM)
     use_article_style()
@@ -250,9 +259,7 @@ def main() -> None:
     # A sweep is what this script draws, so a bare `--smoke` has nothing
     # to plot.  Give it the smallest one rather than making the smoke
     # runner carry a table of per-script arguments.
-    if run.smoke and not any(
-        len(getattr(args, name)) > 1 for name in SWEEPABLE
-    ):
+    if run.smoke and not any(len(getattr(args, name)) > 1 for name in SWEEPABLE):
         args.aot = [0.1, 0.5]
 
     sweep_var, sweep_vals = detect_sweep(args)
