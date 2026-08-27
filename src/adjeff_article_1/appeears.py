@@ -373,7 +373,7 @@ def _value(raw: str | None) -> float | None:
 
 def _to_appeears_date(composite: str) -> str:
     """Convert ``AYYYYDDD`` to the ``MM-DD-YYYY`` AppEEARS asks for."""
-    text = composite[1:] if composite.startswith("A") else composite
+    text = composite.removeprefix("A")
     if len(text) != 7 or not text.isdigit():
         raise AppeearsError(
             f"{composite!r} is not a composite date of the form AYYYYDDD"

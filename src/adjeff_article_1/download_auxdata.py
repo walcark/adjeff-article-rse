@@ -1,17 +1,16 @@
 """Build the Smart-G auxiliary dataset."""
 
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 from smartg.auxdata import download
 
 from .utils import (
-    get_root_path,
-    get_auxdata_path,
     get_auxdata_aer_path,
     get_auxdata_atmo_path,
+    get_auxdata_path,
+    get_root_path,
 )
-
 
 ROOT_PATH: Path = get_root_path()
 AUXDATA_PATH: Path = get_auxdata_path()

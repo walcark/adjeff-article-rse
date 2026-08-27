@@ -1,7 +1,6 @@
 """Define useful helper functions."""
 
 from pathlib import Path
-import os
 
 
 def get_root_path() -> Path:

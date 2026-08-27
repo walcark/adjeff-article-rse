@@ -8,7 +8,6 @@ actually differs between figures.
 from __future__ import annotations
 
 import numpy as np
-
 from adjeff.api import FullConfig, make_full_config, run_forward_pipeline
 from adjeff.core import (
     GeneralizedGaussianPSF,

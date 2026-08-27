@@ -16,7 +16,6 @@ import logging
 from typing import Any
 
 import structlog
-
 from adjeff._logging import _PROCESSORS
 
 __all__ = ["ROOT", "get_logger"]

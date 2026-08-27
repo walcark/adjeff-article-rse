@@ -12,7 +12,6 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-
 from adjeff.api import make_model
 from adjeff.core import GaussPSF, PSFGrid, SensorBand, psf_tree
 from adjeff.core._psf import PSFModule
