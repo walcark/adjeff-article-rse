@@ -10,9 +10,9 @@ a different set of training scenes:
 """
 
 import matplotlib.pyplot as plt
-
 from adjeff.core import S2Band
 from adjeff.optim import Loss, Metric, TrainingImages, loss_landscape
+
 from adjeff_article_1.runconfig import parse_run
 from adjeff_article_1.scenes import (
     disk_scenes,

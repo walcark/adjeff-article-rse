@@ -1,14 +1,20 @@
 """Scatter plot: radial RMSE loss vs encircled-energy radius for GG kernels.
 
-A grid over the (n, sigma) parameter space is evaluated.  For each point
-the loss (trained on three Gaussian fields) and three encircled-energy
-radii (EE10%, EE50%, EE99%) are computed.  The scatter reveals which
-kernel shapes are physically plausible vs. which suffer from a high loss.
+For a Gaussian Generalized PSF model, the (n, sigma) space is explored and
+for each couple (n, sigma), the radial RMSE loss and encircled-energy are
+computed.
+
+The radial RMSE loss expresses the ability of the PSF model to link TOA
+reflectance to surface reflactance in the context of adjacency effects
+correction.
+
+The scatter reveals whether close-to-optimal kernels are close to each
+other, which is in favour the the optimal PSF model is representative of
+the true physics, and will not vary due to non-optimal optimisation.
 """
 
 import matplotlib.pyplot as plt
 import numpy as np
-
 from adjeff.core import S2Band
 from adjeff.optim import (
     Loss,
@@ -17,6 +23,7 @@ from adjeff.optim import (
     energy_radius_landscape,
     loss_landscape,
 )
+
 from adjeff_article_1.runconfig import parse_run
 from adjeff_article_1.scenes import gauss_scenes, gg_parameter_grid
 from adjeff_article_1.style import (
@@ -27,6 +34,7 @@ from adjeff_article_1.style import (
     use_article_style,
 )
 
+# Global parameters
 BAND = S2Band.B03
 RES_KM = 0.05
 N = 3999
@@ -34,15 +42,20 @@ N_SAMPLES = 8
 
 
 def main() -> None:
+
+    # Parse input parameters
     run, _ = parse_run(__doc__.splitlines()[0])
     run = run.resolve(n=N, res_km=RES_KM, n_samples=N_SAMPLES)
     use_article_style()
 
+    # Build the surface and compute rho_toa with Smart-G
     scenes = gauss_scenes(BAND, run)
     train_images = TrainingImages(images=scenes)
 
+    # Generate of grid of GG PSF models
     psf_modules = gg_parameter_grid(BAND, run, run.n_samples)
 
+    # Compute the radial RMSE loss and for each grid point
     losses = loss_landscape(
         train_images=train_images,
         band=BAND,
@@ -50,9 +63,12 @@ def main() -> None:
         loss=Loss(Metric.RMSE_RAD),
         device="cpu",
     )
+
+    # Compute the energy radius for each grid point
     metrics = energy_radius_landscape(psf_modules=psf_modules)
     ee_max = max(float(np.max(v)) for v in metrics.values())
 
+    # Plot the results
     fig, axes = plt.subplots(1, 3, sharey=True, figsize=(8, 3))
 
     for idx, (ax, (label, radii)) in enumerate(zip(axes, metrics.items())):

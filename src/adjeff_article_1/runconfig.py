@@ -36,7 +36,10 @@ ARTICLE_ATMOSPHERE: dict[str, float | dict[str, float]] = {
     "species": {"sulphate": 1.0},
 }
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
+#: Repository root, so that a script's depth under `figures/` does
+#: not decide where it writes.
+REPO_ROOT = Path(__file__).resolve().parents[2]
+_REPO_ROOT = REPO_ROOT
 
 
 @dataclass(frozen=True)
@@ -78,7 +81,7 @@ class RunConfig:
     smoke: bool = False
     explicit: frozenset[str] = frozenset()
 
-    def resolve(self, **native: object) -> "RunConfig":
+    def resolve(self, **native: object) -> RunConfig:
         """Fill in a script's native run parameters.
 
         Figures do not all work on the same grid: the sweeps of figures 7
@@ -112,7 +115,7 @@ class RunConfig:
         return self.n * self.res_km
 
     @classmethod
-    def smoke_run(cls) -> "RunConfig":
+    def smoke_run(cls) -> RunConfig:
         """Return the smallest configuration that still exercises the API.
 
         The pixel size is coarsened rather than the field of view shrunk:

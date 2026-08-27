@@ -42,17 +42,15 @@ python table_aot_sensitivity.py \\
 """
 
 import argparse
-from pathlib import Path
 
 import pandas as pd
 import xarray as xr
-
+from adjeff.analysis import rmse
 from adjeff.api import (
     make_full_config,
     make_model,
     run_forward_pipeline,
 )
-from adjeff.analysis import rmse
 from adjeff.core import (
     ImageDict,
     KingPSF,
@@ -60,14 +58,14 @@ from adjeff.core import (
     SensorBand,
     disk_image_dict,
     gaussian_image_dict,
+    psf_kernel,
 )
 from adjeff.modules.models import Unif2Surface
-from adjeff.modules.samplers import RADIATIVE_VARS
 from adjeff.optim import Loss, Metric, TrainingImages, fit
 from adjeff.utils import CacheStore
-from adjeff_article_1.runconfig import RunConfig, parse_run
-from adjeff.core import psf_kernel
+
 from adjeff_article_1.correction import correct
+from adjeff_article_1.runconfig import RunConfig, parse_run
 
 RES_KM = 0.05
 N = 3999

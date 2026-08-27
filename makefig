@@ -40,12 +40,12 @@ run_figure() {
     local fig="$1"
     echo ">>> $fig"
     case "$fig" in
-        figure2)  python "$FIGS/figure2.py" ;;
-        figure3)  python "$FIGS/figure3.py" ;;
-        figure4)  python "$FIGS/figure4.py" ;;
-        figure5)  python "$FIGS/figure5.py" ;;
+        figure2)  python "$FIGS/article/figure2.py" ;;
+        figure3)  python "$FIGS/article/figure3.py" ;;
+        figure4)  python "$FIGS/article/figure4.py" ;;
+        figure5)  python "$FIGS/article/figure5.py" ;;
         figure7)
-            python "$FIGS/figure7_17.py" \
+            python "$FIGS/article/figure7_17.py" \
                 --figure figure7 \
                 --aot 0.1 0.3 0.5 0.7 \
                 --rh 50.0 --h 0.0 --wl 560.0 --href 2.0 \
@@ -53,7 +53,7 @@ run_figure() {
                 --species blackcar --remove_rayleigh
             ;;
         figure8)
-            python "$FIGS/figure7_17.py" \
+            python "$FIGS/article/figure7_17.py" \
                 --figure figure8 \
                 --aot 0.1 0.3 0.5 0.7 \
                 --rh 50.0 --h 0.0 --wl 560.0 --href 2.0 \
@@ -61,7 +61,7 @@ run_figure() {
                 --species sulphate --remove_rayleigh
             ;;
         figure9)
-            python "$FIGS/figure7_17.py" \
+            python "$FIGS/article/figure7_17.py" \
                 --figure figure9 \
                 --aot 0.1 0.3 0.5 0.7 \
                 --rh 95.0 --h 0.0 --wl 560.0 --href 2.0 \
@@ -69,7 +69,7 @@ run_figure() {
                 --species sulphate --remove_rayleigh
             ;;
         figure10)
-            python "$FIGS/figure7_17.py" \
+            python "$FIGS/article/figure7_17.py" \
                 --figure figure10 \
                 --aot 0.1 0.3 0.5 0.7 \
                 --rh 50.0 --h 0.0 --wl 560.0 --href 2.0 \
@@ -77,7 +77,7 @@ run_figure() {
                 --species seasalt --remove_rayleigh
             ;;
         figure11)
-            python "$FIGS/figure7_17.py" \
+            python "$FIGS/article/figure7_17.py" \
                 --figure figure11 \
                 --aot 0.4 \
                 --rh 50.0 --h 0.0 --wl 560.0 865.0 2190.0 --href 2.0 \
@@ -85,7 +85,7 @@ run_figure() {
                 --species blackcar --remove_rayleigh
             ;;
         figure12)
-            python "$FIGS/figure7_17.py" \
+            python "$FIGS/article/figure7_17.py" \
                 --figure figure12 \
                 --aot 0.4 \
                 --rh 50.0 --h 0.0 --wl 560.0 865.0 2190.0 --href 2.0 \
@@ -93,7 +93,7 @@ run_figure() {
                 --species sulphate --remove_rayleigh
             ;;
         figure13)
-            python "$FIGS/figure7_17.py" \
+            python "$FIGS/article/figure7_17.py" \
                 --figure figure13 \
                 --aot 0.4 \
                 --rh 50.0 --h 0.0 --wl 560.0 865.0 2190.0 --href 2.0 \
@@ -106,7 +106,7 @@ run_figure() {
         # matches the geometric series, molecules included, not the aerosol-only
         # series (0.41 against 0.61 of the flux within 1 km at 560 nm).
         figure14)
-            python "$FIGS/figure7_17.py" \
+            python "$FIGS/article/figure7_17.py" \
                 --figure figure14 \
                 --aot 0.4 \
                 --rh 50.0 --h 0.0 --wl 560.0 --href 1.0 2.0 4.0 \
@@ -115,7 +115,7 @@ run_figure() {
             ;;
         # Sweep of the ground elevation.
         figure15)
-            python "$FIGS/figure7_17.py" \
+            python "$FIGS/article/figure7_17.py" \
                 --figure figure15 \
                 --aot 0.4 \
                 --rh 50.0 --h 0.0 1.5 3.0 --wl 560.0 --href 2.0 \
@@ -124,7 +124,7 @@ run_figure() {
             ;;
         # Sweep of the viewing zenith angle.
         figure16)
-            python "$FIGS/figure7_17.py" \
+            python "$FIGS/article/figure7_17.py" \
                 --figure figure16 \
                 --aot 0.4 \
                 --rh 50.0 --h 0.0 --wl 560.0 --href 2.0 \
@@ -133,7 +133,7 @@ run_figure() {
             ;;
         # Sweep of the solar zenith angle.
         figure17)
-            python "$FIGS/figure7_17.py" \
+            python "$FIGS/article/figure7_17.py" \
                 --figure figure17 \
                 --aot 0.4 \
                 --rh 50.0 --h 0.0 --wl 560.0 --href 2.0 \
@@ -144,16 +144,16 @@ run_figure() {
         # supports the statement of Section 3.2.2 that the dependency on the
         # ground elevation grows as the AOT drops below 0.1.
         elevation_low_aot)
-            python "$FIGS/figure7_17.py" \
+            python "$FIGS/article/figure7_17.py" \
                 --figure elevation_low_aot \
                 --aot 0.05 \
                 --rh 50.0 --h 0.0 1.5 3.0 --wl 560.0 --href 2.0 \
                 --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
                 --species sulphate
             ;;
-        figures22-23) python "$FIGS/figures22-23.py" ;;
+        figures22-23) python "$FIGS/article/figures22-23.py" ;;
         table_aot_sensitivity)
-            python "$FIGS/table_aot_sensitivity.py" \
+            python "$FIGS/reviews/table_aot_sensitivity.py" \
                 --aot-ref 0.4 --aot-delta 0.2 \
                 --wl 490.0 560.0 665.0 865.0 1610.0 2190.0 \
                 --rh 50.0 --h 0.0 --href 2.0 \

@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from adjeff_article_1.runconfig import parse_run
+from adjeff_article_1.runconfig import REPO_ROOT, parse_run
 from adjeff_article_1.style import (
     font,
     panel_title,
@@ -23,7 +23,7 @@ from adjeff_article_1.style import (
     use_article_style,
 )
 
-DATA_DIR = Path(__file__).parent.parent / "data" / "scatterpoints_figures22-23"
+DATA_DIR = REPO_ROOT / "data" / "scatterpoints_figures22-23"
 
 BANDS = ["B2", "B3", "B4", "B5", "B6", "B7"]
 BANDS_NM = [492, 560, 665, 705, 740, 783]

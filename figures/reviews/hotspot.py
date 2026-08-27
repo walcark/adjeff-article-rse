@@ -1,107 +1,100 @@
-"""What the Lambertian assumption costs, on three surfaces that simulate cleanly.
+"""What the Lambertian assumption costs, on three real surfaces.
 
-`hotspot.py` samples eight MODIS sites, ranks them by anisotropy and keeps
-the extremes.  It also inherits a problem: the Ross-Li fit is not
-constrained positive, and the surfaces that are most anisotropic are the
-ones whose BRF goes negative earliest at grazing view.  Smart-G does not
-clip that, so those photons carry a negative weight in exactly the
-angular range the far-field adjacency signal leaves the ground through.
+The King kernel of the article is fitted on Lambertian landscapes and
+then applied, unchanged, to scenes simulated with a Ross-Li Thick BRDF
+taken from MODIS MCD43A1.  The retrieval error against the Lambertian
+reference is what the Lambertian assumption costs.
 
-This is the same study on three surfaces chosen so that question does not
-arise, and reduced to what it takes to answer one question: how wrong is
-the Lambertian assumption, in reflectance, on the landscapes the kernel
-was trained on.
-
-The three
----------
-Not the three safest, which all sit on the same side of Lambertian and
-would only test half of the problem.  These bracket it, and all three
-keep under 1 % of their upward flux in the negative region:
+The three surfaces bracket Lambertian rather than sitting on one side of
+it, and all three keep under 1 % of their upward flux where the Ross-Li
+fit turns negative:
 
 ===================== ======= ============== ===================
 site                  a       BRF negative   negative flux
 ===================== ======= ============== ===================
-skukuza-savanna       0.964   83 deg         0.79 %
-libya4-desert         1.010   90 deg         0.011 %
-konza-grassland       1.028   86 deg         0.36 %
+skukuza-savanna       0.985   83 deg         0.79 %
+libya4-desert         1.015   90 deg         0.012 %
+konza-grassland       1.056   86 deg         0.36 %
 ===================== ======= ============== ===================
 
-``a = DHR / BRF(view)`` is one when the surface is Lambertian, below one
-when it is brighter towards the sensor than towards the hemisphere, and
-above one in the other direction.  The sign matters: it decides which way
-the retrieval is biased.
+``a = albedo / BRF(view)`` is one for a Lambertian surface, below one
+when it is brighter towards the sensor than towards the hemisphere.  The
+albedo is the blue-sky one: the surface is lit by a direct beam and a
+diffuse sky, so the black-sky (`hemispheric`) and white-sky
+(`bihemispheric`) integrals are mixed by the diffuse fraction, read from
+the MODIS lookup table, see `adjeff_article_1.skylight`.
 
-The geometry is the other variable
-----------------------------------
-``a`` is not a property of a surface alone: the hemispheric integral
-depends on the sun, the reference reflectance on the sensor.  Measured
-across sun zenith, at nadir view:
-
-=========== ============ ============ ============ =================
-sun zenith  skukuza      libya4       konza        sign
-=========== ============ ============ ============ =================
-10 deg      0.808        0.973        0.845        all below one
-40 deg      0.972        1.010        1.032        two cross over
-60 deg      1.158        1.050        1.262        all above one
-=========== ============ ============ ============ =================
-
-The manuscript's 40 degrees sits almost exactly where the effect
-vanishes, which is why two of the three surfaces cost nothing there.
-Running 10 and 60 as well separates the two readings left open: whether
-the cost follows the *sign* of ``a - 1``, one geometry having them all
-below and the other all above, or its magnitude.
-
-What it produces
-----------------
-Named by geometry and clamp mode, so runs can be compared rather than
-overwrite each other:
-
-1. ``hotspot_v2_coefficients_szaN.csv``: the MODIS coefficients of the
-   three, with their derived weights and diagnostics.
-2. ``hotspot_v2_brdf_szaN.png``: the angular shape of the three against a
-   Lambertian, each divided by its own value in the viewing direction,
-   which is what the simulation applies.
-3. A table of retrieval error per landscape, and the ratio to the
-   Lambertian surface.  Numbers, not a figure.
+``a`` is not a property of the surface alone.  At nadir view the three
+cross one at 42.0, 29.1 and 32.8 degrees, so the manuscript's 40 degrees
+is where the assumption costs the least for two of them.  Sun zeniths of
+20 and 60 are run as well, which separates the two readings left open:
+the cost follows the *sign* of ``a - 1``, not its magnitude.  At 40
+degrees Konza departs nearly four times further than Skukuza and
+degrades four times less.
 
 ``disk1`` and ``disk5`` are reported and set aside: their error is the
 edge the deconvolution cannot resolve, twenty times the adjacency error,
 and they discriminate no surface.  See ``UNINFORMATIVE``.
 
+Outputs are named by geometry and clamp mode, so runs can be compared
+rather than overwrite each other: the coefficients as a CSV, the angular
+shapes as a figure, and the retrieval error as a table.
+
 Usage
 -----
-python hotspot_v2.py --smoke              # a few minutes, checks the chain
-python hotspot_v2.py --sza 40             # the manuscript's geometry
-python hotspot_v2.py --sza 10 --clamp     # all surfaces below Lambertian
-python hotspot_v2.py --sza 60 --clamp     # all above
+python hotspot.py --smoke              # a few minutes, checks the chain
+python hotspot.py --sza 40             # the manuscript's geometry
+python hotspot.py --sza 20 --clamp     # all surfaces below Lambertian
+python hotspot.py --sza 60 --clamp     # all above
 """
 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xarray as xr
 from adjeff.analysis import rmse
-from adjeff.api import make_full_config, run_forward_pipeline
-from adjeff.core import ImageDict, S2Band, SensorBand, disk_image_dict
-from adjeff.core import gaussian_image_dict
+from adjeff.api import make_full_config, make_model, run_forward_pipeline
+from adjeff.core import (
+    ImageDict,
+    KingPSF,
+    S2Band,
+    SensorBand,
+    disk_image_dict,
+    gaussian_image_dict,
+    psf_kernel,
+)
+from adjeff.modules.models import Unif2Surface
+from adjeff.optim import Loss, Metric, TrainingImages, fit
 from adjeff.utils import CacheStore
 
+from adjeff_article_1.appeears import fetch_mcd43a1 as appeears_fetch
 from adjeff_article_1.correction import correct
-from adjeff_article_1.credentials import add_credentials_arguments
-from adjeff_article_1.runconfig import RunConfig, parse_run
-from adjeff_article_1.style import font, style_axes, use_article_style
-from hotspot import (
+from adjeff_article_1.credentials import (
+    add_credentials_arguments,
+    load_credentials,
+)
+from adjeff_article_1.rossli import (
+    bihemispheric,
     brf_onset,
-    load_ensemble,
-    rtls_shape,
-    rtls_surface,
-    train,
+    hemispheric,
+    negative_flux,
+    shape_of,
+)
+from adjeff_article_1.runconfig import REPO_ROOT, RunConfig, parse_run
+from adjeff_article_1.skylight import MODIS_BANDS, blue_sky, skylight_fraction
+
+#: Coordinates only: every BRDF coefficient comes from MCD43A1.
+SITES: tuple[tuple[str, float, float], ...] = (
+    ("konza-grassland", 39.0824, -96.5603),
+    ("skukuza-savanna", -25.0197, 31.4969),
+    ("libya4-desert", 28.5500, 23.3900),
 )
 
 #: The three surfaces, chosen to bracket Lambertian while keeping under
@@ -123,7 +116,152 @@ CHOSEN = ("skukuza-savanna", "libya4-desert", "konza-grassland")
 #: landscape is retrievable at all.
 UNINFORMATIVE = ("disk1", "disk5")
 
-OUTPUT = Path(__file__).resolve().parent.parent / "output"
+OUTPUT = REPO_ROOT / "output"
+
+
+def load_ensemble(args: argparse.Namespace) -> pd.DataFrame:
+    """Return the MCD43A1 ensemble, from the cache or from the service.
+
+    The cached CSV is the supported hand-off point: any tool able to
+    export ``site``, ``f_iso``, ``f_geo`` and ``f_vol`` (AppEEARS, Earth
+    Engine, a local granule read) can feed this study without going
+    through the ORNL web service.
+    """
+    path = Path(args.sites_csv)
+    if path.exists() and not args.refresh_sites:
+        frame = pd.read_csv(path)
+        missing = {"site", "f_iso", "f_geo", "f_vol"} - set(frame.columns)
+        if missing:
+            raise RuntimeError(f"{path} lacks the columns {sorted(missing)}")
+        if "k1p" not in frame:
+            frame["k1p"] = frame["f_geo"] / frame["f_iso"]
+        if "k2p" not in frame:
+            frame["k2p"] = frame["f_vol"] / frame["f_iso"]
+        print(f">>> MCD43A1 ensemble read from {path}", flush=True)
+        return frame
+
+    frame = _fetch_ensemble(args)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    frame.to_csv(path, index=False)
+    print(f"    cached to {path}", flush=True)
+    return frame
+
+
+def _fetch_ensemble(args: argparse.Namespace) -> pd.DataFrame:
+    """Fetch the ensemble from AppEEARS.
+
+    It needs an Earthdata account and works by submitting a task, which
+    is slower than a plain query, but it is the path that stays up.
+    """
+    print(">>> MCD43A1 ensemble, from AppEEARS", flush=True)
+    rows = appeears_fetch(
+        load_credentials(args),
+        SITES,
+        args.modis_band,
+        args.start_date,
+        args.end_date,
+        timeout_s=args.appeears_timeout,
+    )
+    frame = pd.DataFrame(rows)
+    # `device.cu` wants the weights relative to the isotropic one.  The
+    # ORNL path derives these itself and the CSV reload derives them when
+    # absent; AppEEARS returns the three absolute weights, so it is
+    # derived here rather than in three places.
+    frame["k1p"] = frame["f_geo"] / frame["f_iso"]
+    frame["k2p"] = frame["f_vol"] / frame["f_iso"]
+    return frame
+
+
+
+
+@contextlib.contextmanager
+def rtls_surface(k1p: float, k2p: float) -> Iterator[None]:
+    """Make ``SurfaceFactory.surface`` return an ``RTLSSurface``.
+
+    ``k0`` is read from the landscape itself rather than fixed, because
+    Smart-G applies the BRDF factor to the *whole* ``ENV=2``
+    expression::
+
+        weight *= BRDF * (gauss * (alb_surface - alb_env) + alb_env)
+
+    Both ``alb_surface`` (this object) and ``alb_env`` (the Environment,
+    which is left untouched) must therefore already carry the ``1 /
+    rtls_shape`` normalisation, otherwise a landscape with a non-zero
+    background stops being reproduced: a flat field would pick up a
+    spurious Gaussian modulation from ``alb_surface != alb_env``.  This
+    is handled upstream by :func:`scaled_landscape`.
+
+    Notes
+    -----
+    The coefficients are passed through the deprecated ``kp`` argument
+    on purpose: the ``k0=``/``k1p=``/``k2p=`` keywords of Smart-G 1.2.0
+    assign into a tuple and raise ``TypeError``.
+    """
+    from adjeff.atmosphere import SurfaceFactory
+    from smartg.smartg import RTLSSurface
+    from smartg.water import Albedo_cst
+
+    original = SurfaceFactory.surface
+
+    def patched(self, arr: xr.Dataset):
+        params = arr["rho_s"].adjeff.params() or {}
+        return RTLSSurface(
+            kp=(
+                Albedo_cst(float(params["rho_max"])),
+                Albedo_cst(k1p),
+                Albedo_cst(k2p),
+            )
+        )
+
+    SurfaceFactory.surface = patched  # type: ignore[method-assign]
+    try:
+        yield
+    finally:
+        SurfaceFactory.surface = original  # type: ignore[method-assign]
+
+
+def train(
+    scenes: list[tuple[str, ImageDict]],
+    band: SensorBand,
+    run: RunConfig,
+) -> tuple[xr.DataArray, dict[str, float]]:
+    """Optimise a single King PSF over the whole training set.
+
+    This is the operational kernel of the article: **one** kernel fitted
+    jointly on the six Lambertian landscapes, not one kernel per
+    landscape.  It is the only kernel this study uses; the whole point
+    is to apply it, unchanged, to surfaces it was not trained for.
+    """
+    images = [img for _, img in scenes]
+
+    model = make_model(
+        Unif2Surface,
+        KingPSF,
+        [band],
+        res_km=run.res_km,
+        n=run.n,
+        init_parameters={"sigma": 0.1, "gamma": 1.0},
+        device=run.device,
+    )
+    tree = fit(
+        model,
+        TrainingImages(images=images),
+        loss=Loss(Metric.RMSE_RAD),
+        device=run.device,
+    )
+    kernel = psf_kernel(tree, band).squeeze(drop=True)
+    params = model.psf_params(band)
+
+    # Joint training over six 3999x3999 landscapes is memory hungry.
+    # The model is released before returning so that a second training
+    # in the same process does not add to the peak.
+    del model, tree
+    if run.device.startswith("cuda"):
+        import torch
+
+        torch.cuda.empty_cache()
+
+    return kernel, params
 
 
 def selected_surfaces(args: argparse.Namespace) -> pd.DataFrame:
@@ -164,7 +302,22 @@ def selected_surfaces(args: argparse.Namespace) -> pd.DataFrame:
         hemispheric(args.sza, k1p, k2p, args.clamp)
         for k1p, k2p in zip(frame["k1p"], frame["k2p"], strict=True)
     ]
-    frame["a"] = frame["dhr"] / frame["shape_view"]
+    frame["bhr"] = [
+        bihemispheric(k1p, k2p, args.clamp)
+        for k1p, k2p in zip(frame["k1p"], frame["k2p"], strict=True)
+    ]
+    frame["skyl"] = skylight_fraction(
+        args.sza, args.aot, band=args.modis_band, aerosol=args.aerosol
+    )
+    frame["albedo"] = [
+        blue_sky(
+            dhr, bhr, args.sza, args.aot,
+            band=args.modis_band, aerosol=args.aerosol,
+        )
+        for dhr, bhr in zip(frame["dhr"], frame["bhr"], strict=True)
+    ]
+    frame["a"] = frame["albedo"] / frame["shape_view"]
+    frame["a_black"] = frame["dhr"] / frame["shape_view"]
     frame["brf_neg_vza"] = [
         brf_onset(args.sza, k1p, k2p)
         for k1p, k2p in zip(frame["k1p"], frame["k2p"], strict=True)
@@ -174,80 +327,6 @@ def selected_surfaces(args: argparse.Namespace) -> pd.DataFrame:
         for k1p, k2p in zip(frame["k1p"], frame["k2p"], strict=True)
     ]
     return frame.sort_values("a").reset_index(drop=True)
-
-
-def shape_of(
-    sza_deg: float | np.ndarray,
-    vza_deg: float | np.ndarray,
-    raa_deg: float | np.ndarray,
-    k1p: float,
-    k2p: float,
-    clamp: bool,
-) -> np.ndarray:
-    """Return the angular factor, clamped at zero or not.
-
-    Clamping has to happen on both sides or neither.  `device.cu` decides
-    what the photons do; this decides what `a`, the hemispheric integral
-    and the rescaling describe.  If the two disagree, the study compares
-    a correction against a truth simulated for another surface.
-    """
-    shape = rtls_shape(sza_deg, vza_deg, raa_deg, k1p, k2p)
-    return np.maximum(shape, 0.0) if clamp else shape
-
-
-def hemispheric(sza_deg: float, k1p: float, k2p: float, clamp: bool) -> float:
-    """Return the black-sky albedo of the shape, one for a Lambertian.
-
-    Reimplemented here rather than taken from `hotspot.rtls_dhr` so that
-    the clamp can be applied inside the integrand: clamping afterwards
-    would not remove the negative contribution, which is the point.
-    """
-    theta = np.linspace(1e-4, np.pi / 2.0 - 1e-4, 400)
-    phi = np.linspace(0.0, 2.0 * np.pi, 241)
-    grid_t, grid_p = np.meshgrid(theta, phi, indexing="ij")
-    shape = shape_of(
-        sza_deg, np.degrees(grid_t), np.degrees(grid_p), k1p, k2p, clamp
-    )
-    weighted = shape * np.cos(grid_t) * np.sin(grid_t)
-    return float(
-        np.trapezoid(np.trapezoid(weighted, phi, axis=1), theta) / np.pi
-    )
-
-
-def negative_flux(sza_deg: float, k1p: float, k2p: float, n_theta: int = 200) -> float:
-    """Return the share of upward flux leaving where the BRF is negative.
-
-    Weighted as the hemispheric integral is, by ``cos(theta) sin(theta)``,
-    because that is the flux that feeds the adjacency term.  The solid
-    angle alone overstates it: the grazing directions where the fit
-    misbehaves are the ones the cosine suppresses.
-
-    Parameters
-    ----------
-    sza_deg : float
-        Sun zenith angle [deg].
-    k1p, k2p : float
-        Relative geometric and volumetric weights.
-    n_theta : int
-        Quadrature resolution in zenith.
-
-    Returns
-    -------
-    float
-        Percentage of the positive flux carried by the negative region.
-    """
-    theta = np.linspace(1e-4, np.pi / 2.0 - 1e-4, n_theta)
-    phi = np.linspace(0.0, 2.0 * np.pi, 121)
-    grid_t, grid_p = np.meshgrid(theta, phi, indexing="ij")
-    shape = rtls_shape(sza_deg, np.degrees(grid_t), np.degrees(grid_p), k1p, k2p)
-    weight = np.cos(grid_t) * np.sin(grid_t)
-
-    def integrate(values: np.ndarray) -> float:
-        return float(np.trapezoid(np.trapezoid(values, phi, axis=1), theta))
-
-    negative = integrate(np.where(shape < 0.0, shape, 0.0) * weight)
-    positive = integrate(np.where(shape < 0.0, 0.0, shape) * weight)
-    return 100.0 * abs(negative) / positive
 
 
 def write_coefficients(frame: pd.DataFrame, path: Path) -> None:
@@ -263,7 +342,11 @@ def write_coefficients(frame: pd.DataFrame, path: Path) -> None:
         "k2p",
         "shape_view",
         "dhr",
+        "bhr",
+        "skyl",
+        "albedo",
         "a",
+        "a_black",
         "brf_neg_vza",
         "negative_flux_pct",
     ]
@@ -272,89 +355,6 @@ def write_coefficients(frame: pd.DataFrame, path: Path) -> None:
     frame[kept].to_csv(path, index=False)
     print(f">>> coefficients written to {path}", flush=True)
     print(frame[kept].to_string(index=False), flush=True)
-
-
-def plot_brdf(frame: pd.DataFrame, args: argparse.Namespace, path: Path) -> None:
-    """Draw the angular shape of each surface through the principal plane.
-
-    The view zenith runs from one side of the principal plane to the
-    other, negative angles meaning a relative azimuth of 180 deg.  The
-    hotspot sits where the sensor looks straight down the sun's own
-    direction, which for a sun at *sza* is the positive side.
-
-    Parameters
-    ----------
-    frame : pd.DataFrame
-        The three surfaces, with ``k1p`` and ``k2p``.
-    args : argparse.Namespace
-        Carries ``sza``.
-    path : Path
-        Where to write the figure.
-    """
-    use_article_style()
-    vza = np.linspace(-80.0, 80.0, 321)
-    # A negative view zenith is the far side of the principal plane.
-    raa = np.where(vza < 0.0, 180.0, 0.0)
-
-    fig, ax = plt.subplots(figsize=(5.4, 3.4), layout="constrained")
-    ax.axhline(
-        1.0,
-        color="0.35",
-        linestyle="--",
-        linewidth=1.2,
-        label="Lambertian",
-        zorder=1,
-    )
-    for row in frame.itertuples():
-        # Divided by its own value in the viewing direction, which is
-        # what the simulation applies: `scaled_landscape` scales each
-        # surface so the *observed* reflectance matches the Lambertian
-        # one.  Only what leaves towards the hemisphere differs, and the
-        # curves therefore all pass through one at the sensor's angle.
-        shape = (
-            shape_of(args.sza, np.abs(vza), raa, row.k1p, row.k2p, args.clamp)
-            / row.shape_view
-        )
-        ax.plot(
-            vza,
-            shape,
-            linewidth=1.4,
-            label=f"{row.site}  ($a$ = {row.a:.3f})",
-            zorder=2,
-        )
-
-    ax.axvline(args.vza, color="0.75", linewidth=0.8, linestyle=":", zorder=0)
-    ax.axvline(args.sza, color="0.6", linewidth=0.8, zorder=0)
-    ax.annotate(
-        "sensor", xy=(args.vza, 1.0), xytext=(4, 4),
-        textcoords="offset points", fontsize=font(10 / 12), color="0.4",
-    )
-    ax.annotate(
-        "hotspot",
-        xy=(args.sza, ax.get_ylim()[1]),
-        xytext=(3, -10),
-        textcoords="offset points",
-        fontsize=font(10 / 12),
-        color="0.4",
-    )
-    ax.set_xlabel(r"View zenith angle [$^\circ$]", fontsize=font())
-    ax.set_ylabel(
-        r"$\left[1 + k_1' F_1 + k_2' F_2\right] \,/\, $ value at sensor",
-        fontsize=font(),
-    )
-    ax.set_title(
-        rf"BRDF shape, normalised at the sensor, $\theta_s$ = {args.sza:g}$^\circ$, "
-        rf"$\theta_v$ = {args.vza:g}$^\circ$",
-        fontsize=font(),
-        pad=6,
-    )
-    ax.legend(fontsize=font(10 / 12), loc="upper left")
-    style_axes(ax)
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(path, dpi=200)
-    plt.close(fig)
-    print(f">>> wrote {path}", flush=True)
 
 
 def landscapes(
@@ -372,13 +372,13 @@ def landscapes(
     under test.  The truth to compare against therefore stays the
     unscaled landscape.
     """
-    common = dict(
-        res_km=run.res_km,
-        rho_min=0.0,
-        rho_max=args.rho_max * scale,
-        bands=[band],
-        n=run.n,
-    )
+    common = {
+        "res_km": run.res_km,
+        "rho_min": 0.0,
+        "rho_max": args.rho_max * scale,
+        "bands": [band],
+        "n": run.n,
+    }
     out: list[tuple[str, ImageDict]] = []
     for value in args.scales:
         out.append((f"gauss{value:g}", gaussian_image_dict(sigma=value, **common)))
@@ -420,7 +420,7 @@ def simulate(
         vaa=args.vaa,
         species={args.species: 1.0},
     )
-    pipeline = dict(nr=args.nr, n_ph=run.n_ph)
+    pipeline = {"nr": args.nr, "n_ph": run.n_ph}
 
     # The Lambertian surface has no BRDF, so the clamp cannot change it:
     # its store is deliberately shared between the two modes.  Recomputing
@@ -558,7 +558,7 @@ def report(
             line += f"{rtls[site][name] / lambertian[name]:23.2f}x"
         print(line + mark)
 
-    print(f"\n>>> cost of the Lambertian assumption\n", flush=True)
+    print("\n>>> cost of the Lambertian assumption\n", flush=True)
     print(
         f"{'surface':<24} {'a':>7} {'|a-1|':>7} "
         f"{'mean ratio':>12} {'all six':>10}"
@@ -584,6 +584,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--modis-band", type=int, default=1)
     parser.add_argument("--aot", type=float, default=0.4)
     parser.add_argument("--rh", type=float, default=50.0)
+    parser.add_argument(
+        "--aerosol", choices=("Continental", "Maritime"), default="Continental",
+        help="atmosphere the skylight fraction is read for",
+    )
     parser.add_argument("--h", type=float, default=0.0)
     parser.add_argument("--href", type=float, default=2.0)
     parser.add_argument("--sza", type=float, default=40.0)
@@ -609,9 +613,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="cached MODIS ensemble; reused when present",
     )
     parser.add_argument("--refresh-sites", action="store_true")
-    parser.add_argument(
-        "--brdf-source", choices=("auto", "ornl", "appeears"), default="auto"
-    )
     parser.add_argument("--appeears-timeout", type=float, default=3600.0)
     parser.add_argument(
         "--clamp",
@@ -623,6 +624,41 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def check_band_agrees(wl_nm: float, modis_band: int) -> None:
+    """Refuse to run when the simulation and the BRDF fit disagree on colour.
+
+    The Ross-Li weights are per band, and so is the skylight fraction.
+    Reading them on one band and simulating on another is a silent
+    error: a desert is far brighter at 858 than at 665 nm, and nothing
+    downstream would say so.
+
+    Parameters
+    ----------
+    wl_nm : float
+        Wavelength the radiative transfer runs at [nm].
+    modis_band : int
+        MODIS band the coefficients are read on.
+
+    Raises
+    ------
+    ValueError
+        When the wavelength falls outside that band's range.
+    """
+    low, high = MODIS_BANDS[modis_band]
+    if low <= wl_nm <= high:
+        print(
+            f">>> band: {wl_nm:g} nm inside MODIS band {modis_band} "
+            f"({low:g}-{high:g} nm)",
+            flush=True,
+        )
+        return
+    raise ValueError(
+        f"the simulation runs at {wl_nm:g} nm but the BRDF coefficients are "
+        f"read on MODIS band {modis_band}, which covers {low:g} to {high:g} "
+        "nm. Set --wl and --modis-band on the same colour."
+    )
+
+
 def check_clamp_agrees(requested: bool) -> None:
     """Refuse to run when Python and the CUDA kernel disagree.
 
@@ -631,7 +667,7 @@ def check_clamp_agrees(requested: bool) -> None:
     It is the one failure this study cannot detect from its own output,
     so it is checked before anything runs.
     """
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
     from clamp_brdf import clamp_state
 
     kernel = clamp_state()
@@ -650,12 +686,13 @@ def check_clamp_agrees(requested: bool) -> None:
 def main() -> None:
     """Measure what the Lambertian assumption costs on three surfaces."""
     run, args = parse_run(__doc__.splitlines()[0], build_parser())
-    run = run.resolve(n=1999, res_km=0.10, cache_dir="/tmp/adjeff-hotspot-v2")
+    run = run.resolve(n=1999, res_km=0.10, cache_dir="/tmp/adjeff-hotspot")
     if run.smoke:
         args.scales = [1.0, 5.0]
         args.nr = 20
 
     check_clamp_agrees(args.clamp)
+    check_band_agrees(args.wl, args.modis_band)
     if args.clamp:
         run = run.resolve(cache_dir=run.cache_dir + "-clamped")
     # The kernel is fitted per geometry, so a sun zenith is a whole run
@@ -670,8 +707,7 @@ def main() -> None:
     suffix = f"_sza{args.sza:g}" + ("_clamped" if args.clamp else "")
     band = S2Band.from_wl(args.wl)
     frame = selected_surfaces(args)
-    write_coefficients(frame, OUTPUT / f"hotspot_v2_coefficients{suffix}.csv")
-    plot_brdf(frame, args, run.figs_dir / f"hotspot_v2_brdf{suffix}.png")
+    write_coefficients(frame, OUTPUT / f"hotspot_coefficients{suffix}.csv")
 
     lambertian_scenes, rtls_scenes = simulate(band, args, run, frame)
 
@@ -688,7 +724,7 @@ def main() -> None:
         },
         uncorrected_error(lambertian_scenes, truth, kernel, band, run.device),
         frame,
-        OUTPUT / f"hotspot_v2_rmse{suffix}.csv",
+        OUTPUT / f"hotspot_rmse{suffix}.csv",
     )
 
 
