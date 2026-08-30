@@ -47,7 +47,6 @@ python hotspot.py --sza 40             # the manuscript's geometry
 python hotspot.py --sza 20 --clamp     # all surfaces below Lambertian
 python hotspot.py --sza 60 --clamp     # all above
 """
-
 from __future__ import annotations
 
 import argparse
@@ -59,6 +58,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import xarray as xr
+
 from adjeff.analysis import rmse
 from adjeff.api import make_full_config, make_model, run_forward_pipeline
 from adjeff.core import (
@@ -70,7 +70,9 @@ from adjeff.core import (
     gaussian_image_dict,
     psf_kernel,
 )
+from adjeff.modules.classic import Toa2Unif
 from adjeff.modules.models import Unif2Surface
+from adjeff.modules.samplers import RADIATIVE_VARS, RadiativePipeline
 from adjeff.optim import Loss, Metric, TrainingImages, fit
 from adjeff.utils import CacheStore
 
@@ -89,7 +91,6 @@ from adjeff_article_1.rossli import (
 )
 from adjeff_article_1.runconfig import REPO_ROOT, RunConfig, parse_run
 from adjeff_article_1.skylight import MODIS_BANDS, blue_sky, skylight_fraction
-
 #: Coordinates only: every BRDF coefficient comes from MCD43A1.
 SITES: tuple[tuple[str, float, float], ...] = (
     ("konza-grassland", 39.0824, -96.5603),
@@ -197,9 +198,10 @@ def rtls_surface(k1p: float, k2p: float) -> Iterator[None]:
     on purpose: the ``k0=``/``k1p=``/``k2p=`` keywords of Smart-G 1.2.0
     assign into a tuple and raise ``TypeError``.
     """
-    from adjeff.atmosphere import SurfaceFactory
     from smartg.smartg import RTLSSurface
     from smartg.water import Albedo_cst
+
+    from adjeff.atmosphere import SurfaceFactory
 
     original = SurfaceFactory.surface
 
@@ -469,66 +471,136 @@ def lambertian_cache(run: RunConfig) -> str:
     return run.cache_dir.removesuffix("-clamped") + "/lambertian"
 
 
-def retrieval_error(
+def brdf_scalars(
+    band: SensorBand,
+    args: argparse.Namespace,
+    run: RunConfig,
+    row: pd.Series,
+) -> xr.Dataset:
+    """Return the six radiative quantities computed over the RTLS surface.
+
+    Only ``tdif_up`` and ``sph_alb`` change: the four others never see the
+    ground.  They do not depend on the landscape, so one call per surface
+    covers every scene, and the result is merged into a scene whose
+    ``rho_toa`` was simulated over that same surface.
+    """
+    cfg = make_full_config(
+        bands=[band],
+        aot=args.aot,
+        rh=args.rh,
+        h=args.h,
+        href=args.href,
+        sza=args.sza,
+        vza=args.vza,
+        saa=args.saa,
+        vaa=args.vaa,
+        species={args.species: 1.0},
+    )
+    pipeline = RadiativePipeline(
+        atmo_config=cfg["atmo_config"],
+        geo_config=cfg["geo_config"],
+        spectral_config=cfg["spectral_config"],
+        remove_rayleigh=False,
+        rtls=(1.0 / row.shape_view, row.k1p, row.k2p),
+        cache=CacheStore(run.cache_dir + f"/scalars_{row.site}"),
+    )
+    return pipeline(ImageDict({band: xr.Dataset()}))[band]
+
+
+def with_scalars(
+    scenes: list[tuple[str, ImageDict]],
+    scalars: xr.Dataset,
+    band: SensorBand,
+) -> list[tuple[str, ImageDict]]:
+    """Return the scenes with the radiative terms of their own surface.
+
+    ``rho_unif`` is recomputed from them, since it is what a kernel is
+    fitted against: training on a ``rho_unif`` inverted with another
+    surface's terms would fit the kernel to that mismatch.
+
+    Warnings
+    --------
+    The RTLS scenes carry a ``rho_s`` rescaled by ``1 / shape_view``,
+    while :func:`truth_of` scores against the unscaled landscapes.  A
+    kernel fitted here is therefore fitted to one target and scored on
+    another, which is why the ``--own-kernel`` arm currently lands well
+    above the borrowed kernel instead of below it.  Decide which target
+    the fit should see before reading that column.
+    """
+    out = []
+    for name, scene in scenes:
+        ds = scene[band].assign({v: scalars[v] for v in RADIATIVE_VARS})
+        out.append((name, Toa2Unif()(ImageDict({band: ds}))))
+    return out
+
+
+def errors(
     scenes: list[tuple[str, ImageDict]],
     truth: dict[str, xr.DataArray],
     kernel: xr.DataArray,
     band: SensorBand,
     device: str,
+    *,
+    scalars: xr.Dataset | None = None,
+    deconvolve: bool = True,
 ) -> dict[str, float]:
-    """Return the radial RMSE of the retrieved reflectance, per landscape.
+    """Return the radial RMSE of the retrieval, per landscape.
 
-    The kernel is the operational one, fitted on the Lambertian training
-    set and applied unchanged: that is the whole question, how it fares
-    on a surface it was not trained for.
+    Two axes, and the study is their cross product.  *scalars* replaces
+    the six radiative quantities the inversion uses, which is how the
+    surface the scene was *simulated* over is separated from the surface
+    the correction *assumes*; ``None`` keeps the scene's own, which the
+    forward run computed Lambertian.  *deconvolve* chooses between the
+    trained kernel and no adjacency correction at all, the reference
+    every corrected number has to be read against.
     """
-    errors: dict[str, float] = {}
+    out: dict[str, float] = {}
     for name, scene in scenes:
-        estimate, uniform = correct(scene[band], band, kernel, device)
-        errors[name] = float(
-            rmse(estimate, truth[name], mask=uniform, radial=True, device=device)
+        ds = scene[band]
+        if scalars is not None:
+            ds = ds.assign({v: scalars[v] for v in RADIATIVE_VARS})
+        estimate, uniform = correct(ds, band, kernel, device)
+        got = estimate if deconvolve else uniform
+        out[name] = float(
+            rmse(got, truth[name], mask=uniform, radial=True, device=device)
         )
-    return errors
+    return out
 
 
-def uncorrected_error(
-    scenes: list[tuple[str, ImageDict]],
-    truth: dict[str, xr.DataArray],
-    kernel: xr.DataArray,
-    band: SensorBand,
-    device: str,
-) -> dict[str, float]:
-    """Return the error of doing no adjacency correction at all.
+#: The four arms of the study, per surface.  The first word is what the
+#: correction assumes about the surface, the second whether it
+#: deconvolves.
+ARMS = ("lam_nopsf", "lam_psf", "brdf_nopsf", "brdf_psf")
 
-    The reference every corrected number should be read against: a
-    correction that costs more than it saves is not one.
-    """
-    errors: dict[str, float] = {}
-    for name, scene in scenes:
-        _, uniform = correct(scene[band], band, kernel, device)
-        errors[name] = float(
-            rmse(uniform, truth[name], mask=uniform, radial=True, device=device)
-        )
-    return errors
+#: The optional fifth arm: the surface's own terms **and** a kernel
+#: retrained on it, which is the only arm where nothing is borrowed
+#: from the Lambertian case.
+OWN_ARM = "brdf_psf_own"
 
 
 def report(
-    lambertian: dict[str, float],
-    rtls: dict[str, dict[str, float]],
-    no_correction: dict[str, float],
+    lambertian: dict[str, dict[str, float]],
+    rtls: dict[str, dict[str, dict[str, float]]],
     frame: pd.DataFrame,
     path: Path,
 ) -> pd.DataFrame:
-    """Assemble, print and write the error table."""
-    names = list(lambertian)
+    """Assemble, print and write the error table.
+
+    *lambertian* and each entry of *rtls* hold one dict per arm of
+    :data:`ARMS`.  The Lambertian scene has no BRDF arm, since assuming
+    the surface it actually has *is* the Lambertian assumption.
+    """
+    names = list(lambertian["lam_psf"])
     rows = []
     for name in names:
-        row = {
-            "landscape": name,
-            "no_correction": no_correction[name],
-            "lambertian": lambertian[name],
-        }
-        row.update({site: errors[name] for site, errors in rtls.items()})
+        row = {"landscape": name}
+        row.update({f"lambertian_{arm}": lambertian[arm][name] for arm in ARMS[:2]})
+        for site, arms in rtls.items():
+            row.update(
+                {f"{site}_{arm}": arms[arm][name] for arm in ARMS if arm in arms}
+            )
+            if OWN_ARM in arms:
+                row[f"{site}_{OWN_ARM}"] = arms[OWN_ARM][name]
         rows.append(row)
 
     table = pd.DataFrame(rows)
@@ -539,41 +611,51 @@ def report(
     print(table.to_string(index=False, float_format=lambda v: f"{v:.6f}"))
 
     informative = [n for n in names if n not in UNINFORMATIVE]
-    surfaces = list(rtls)
-
+    own = any(OWN_ARM in arms for arms in rtls.values())
     # A mean of ratios rather than a ratio of means: the errors span an
     # order of magnitude across landscapes, so an arithmetic mean is the
     # worst landscape and little else.  Each landscape then counts once.
+    def mean(numerator: dict[str, float], reference: dict[str, float]) -> float:
+        """Return the mean ratio over the informative landscapes."""
+        return float(np.mean([numerator[n] / reference[n] for n in informative]))
+
     print(
-        f"\n>>> ratio to the Lambertian surface, per landscape"
+        f"\n>>> what each step buys, mean over the informative landscapes"
         f"\n    ({', '.join(UNINFORMATIVE)} set aside: edge-dominated)\n",
         flush=True,
     )
-    header = f"{'landscape':<12}" + "".join(f"{s:>24}" for s in surfaces)
-    print(header)
-    for name in names:
-        mark = "  " if name in informative else " *"
-        line = f"{name:<12}"
-        for site in surfaces:
-            line += f"{rtls[site][name] / lambertian[name]:23.2f}x"
-        print(line + mark)
-
-    print("\n>>> cost of the Lambertian assumption\n", flush=True)
     print(
-        f"{'surface':<24} {'a':>7} {'|a-1|':>7} "
-        f"{'mean ratio':>12} {'all six':>10}"
+        f"{'surface':<24} {'a':>7} {'PSF':>10} {'BRDF terms':>12} "
+        f"{'residual':>10}" + (f"{'own kernel':>12}" if own else "")
+    )
+    print(
+        f"{'lambertian':<24} {1.0:7.3f} "
+        f"{mean(lambertian['lam_psf'], lambertian['lam_nopsf']):9.2f}x "
+        f"{'-':>11} {1.0:9.2f}x"
     )
     for row in frame.itertuples():
-        useful = np.mean([rtls[row.site][n] / lambertian[n] for n in informative])
-        every = np.mean([rtls[row.site][n] / lambertian[n] for n in names])
+        arms = rtls[row.site]
         print(
-            f"{row.site:<24} {row.a:7.3f} {abs(row.a - 1):7.3f} "
-            f"{useful:11.2f}x {every:9.2f}x"
+            f"{row.site:<24} {row.a:7.3f} "
+            # What the trained kernel buys over doing nothing, on this
+            # surface and with the Lambertian scalars the study uses.
+            f"{mean(arms['lam_psf'], arms['lam_nopsf']):9.2f}x "
+            # What the Lambertian assumption on tdif_up and sph_alb
+            # costs, kernel held fixed.
+            f"{mean(arms['lam_psf'], arms['brdf_psf']):11.2f}x "
+            # What is left once both are accounted for: the kernel
+            # trained on another surface, plus the limit of 5S itself.
+            f"{mean(arms['brdf_psf'], lambertian['lam_psf']):9.2f}x"
+            # Only when the kernel was retrained on this surface: what is
+            # left is then the limit of the 5S formula alone.
+            + (
+                f"{mean(arms[OWN_ARM], lambertian['lam_psf']):11.2f}x"
+                if OWN_ARM in arms
+                else ""
+            )
         )
 
-    gain = np.mean([no_correction[n] / lambertian[n] for n in informative])
-    print(f"\n{'no correction at all':<24} {'-':>7} {'-':>7} {gain:11.2f}x")
-    print(f">>> table written to {path}", flush=True)
+    print(f"\n>>> table written to {path}", flush=True)
     return table
 
 
@@ -595,6 +677,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--saa", type=float, default=0.0)
     parser.add_argument("--vaa", type=float, default=0.0)
     parser.add_argument("--species", type=str, default="sulphate")
+    parser.add_argument(
+        "--own-kernel", action="store_true",
+        help=(
+            "also fit one kernel per surface; see with_scalars, the target "
+            "it trains against is not the one it is scored on yet"
+        ),
+    )
     parser.add_argument("--rho-max", type=float, default=0.3)
     parser.add_argument(
         "--scales",
@@ -716,16 +805,35 @@ def main() -> None:
     print(f"    {params}", flush=True)
 
     truth = truth_of(band, args, run)
-    report(
-        retrieval_error(lambertian_scenes, truth, kernel, band, run.device),
-        {
-            site: retrieval_error(scenes, truth, kernel, band, run.device)
-            for site, scenes in rtls_scenes.items()
-        },
-        uncorrected_error(lambertian_scenes, truth, kernel, band, run.device),
-        frame,
-        OUTPUT / f"hotspot_rmse{suffix}.csv",
-    )
+    common = (truth, kernel, band, run.device)
+    lambertian_arms = {
+        "lam_nopsf": errors(lambertian_scenes, *common, deconvolve=False),
+        "lam_psf": errors(lambertian_scenes, *common),
+    }
+    # Each surface is corrected four ways: with or without the kernel,
+    # and with the scalar terms of a Lambertian surface or of its own.
+    # Only the second axis needs a new simulation, and only of the six
+    # radiative quantities, which do not depend on the landscape.
+    rtls_arms = {}
+    for row in frame.itertuples():
+        scenes = rtls_scenes[row.site]
+        print(f">>> radiative terms over the RTLS surface, {row.site}", flush=True)
+        scalars = brdf_scalars(band, args, run, row)
+        rtls_arms[row.site] = {
+            "lam_nopsf": errors(scenes, *common, deconvolve=False),
+            "lam_psf": errors(scenes, *common),
+            "brdf_nopsf": errors(scenes, *common, scalars=scalars, deconvolve=False),
+            "brdf_psf": errors(scenes, *common, scalars=scalars),
+        }
+        if args.own_kernel:
+            print(f">>> fitting a kernel on {row.site} itself", flush=True)
+            own, params = train(with_scalars(scenes, scalars, band), band, run)
+            print(f"    {params}", flush=True)
+            rtls_arms[row.site][OWN_ARM] = errors(
+                scenes, truth, own, band, run.device, scalars=scalars
+            )
+
+    report(lambertian_arms, rtls_arms, frame, OUTPUT / f"hotspot_rmse{suffix}.csv")
 
 
 if __name__ == "__main__":
