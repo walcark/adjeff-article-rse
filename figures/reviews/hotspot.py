@@ -58,24 +58,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import xarray as xr
-
-from adjeff.analysis import rmse
-from adjeff.api import make_full_config, make_model, run_forward_pipeline
-from adjeff.core import (
-    ImageDict,
-    KingPSF,
-    S2Band,
-    SensorBand,
-    disk_image_dict,
-    gaussian_image_dict,
-    psf_kernel,
-)
-from adjeff.modules.classic import Toa2Unif
-from adjeff.modules.models import Unif2Surface
-from adjeff.modules.samplers import RADIATIVE_VARS, RadiativePipeline
-from adjeff.optim import Loss, Metric, TrainingImages, fit
-from adjeff.utils import CacheStore
-
 from adjeff_article_1.appeears import fetch_mcd43a1 as appeears_fetch
 from adjeff_article_1.correction import correct
 from adjeff_article_1.credentials import (
@@ -91,6 +73,23 @@ from adjeff_article_1.rossli import (
 )
 from adjeff_article_1.runconfig import REPO_ROOT, RunConfig, parse_run
 from adjeff_article_1.skylight import MODIS_BANDS, blue_sky, skylight_fraction
+
+from adjeff.analysis import rmse
+from adjeff.api import make_full_config, make_model, run_forward_pipeline
+from adjeff.core import (
+    ImageDict,
+    KingPSF,
+    S2Band,
+    SensorBand,
+    disk_image_dict,
+    gaussian_image_dict,
+    psf_kernel,
+)
+from adjeff.modules.models import Unif2Surface
+from adjeff.modules.samplers import RADIATIVE_VARS, RadiativePipeline
+from adjeff.optim import Loss, Metric, TrainingImages, fit
+from adjeff.utils import CacheStore
+
 #: Coordinates only: every BRDF coefficient comes from MCD43A1.
 SITES: tuple[tuple[str, float, float], ...] = (
     ("konza-grassland", 39.0824, -96.5603),
@@ -507,33 +506,6 @@ def brdf_scalars(
     return pipeline(ImageDict({band: xr.Dataset()}))[band]
 
 
-def with_scalars(
-    scenes: list[tuple[str, ImageDict]],
-    scalars: xr.Dataset,
-    band: SensorBand,
-) -> list[tuple[str, ImageDict]]:
-    """Return the scenes with the radiative terms of their own surface.
-
-    ``rho_unif`` is recomputed from them, since it is what a kernel is
-    fitted against: training on a ``rho_unif`` inverted with another
-    surface's terms would fit the kernel to that mismatch.
-
-    Warnings
-    --------
-    The RTLS scenes carry a ``rho_s`` rescaled by ``1 / shape_view``,
-    while :func:`truth_of` scores against the unscaled landscapes.  A
-    kernel fitted here is therefore fitted to one target and scored on
-    another, which is why the ``--own-kernel`` arm currently lands well
-    above the borrowed kernel instead of below it.  Decide which target
-    the fit should see before reading that column.
-    """
-    out = []
-    for name, scene in scenes:
-        ds = scene[band].assign({v: scalars[v] for v in RADIATIVE_VARS})
-        out.append((name, Toa2Unif()(ImageDict({band: ds}))))
-    return out
-
-
 def errors(
     scenes: list[tuple[str, ImageDict]],
     truth: dict[str, xr.DataArray],
@@ -572,11 +544,6 @@ def errors(
 #: deconvolves.
 ARMS = ("lam_nopsf", "lam_psf", "brdf_nopsf", "brdf_psf")
 
-#: The optional fifth arm: the surface's own terms **and** a kernel
-#: retrained on it, which is the only arm where nothing is borrowed
-#: from the Lambertian case.
-OWN_ARM = "brdf_psf_own"
-
 
 def report(
     lambertian: dict[str, dict[str, float]],
@@ -596,11 +563,7 @@ def report(
         row = {"landscape": name}
         row.update({f"lambertian_{arm}": lambertian[arm][name] for arm in ARMS[:2]})
         for site, arms in rtls.items():
-            row.update(
-                {f"{site}_{arm}": arms[arm][name] for arm in ARMS if arm in arms}
-            )
-            if OWN_ARM in arms:
-                row[f"{site}_{OWN_ARM}"] = arms[OWN_ARM][name]
+            row.update({f"{site}_{arm}": arms[arm][name] for arm in ARMS})
         rows.append(row)
 
     table = pd.DataFrame(rows)
@@ -611,7 +574,6 @@ def report(
     print(table.to_string(index=False, float_format=lambda v: f"{v:.6f}"))
 
     informative = [n for n in names if n not in UNINFORMATIVE]
-    own = any(OWN_ARM in arms for arms in rtls.values())
     # A mean of ratios rather than a ratio of means: the errors span an
     # order of magnitude across landscapes, so an arithmetic mean is the
     # worst landscape and little else.  Each landscape then counts once.
@@ -620,39 +582,32 @@ def report(
         return float(np.mean([numerator[n] / reference[n] for n in informative]))
 
     print(
-        f"\n>>> what each step buys, mean over the informative landscapes"
+        f"\n>>> where the error of the operational correction comes from"
         f"\n    ({', '.join(UNINFORMATIVE)} set aside: edge-dominated)\n",
         flush=True,
     )
     print(
-        f"{'surface':<24} {'a':>7} {'PSF':>10} {'BRDF terms':>12} "
-        f"{'residual':>10}" + (f"{'own kernel':>12}" if own else "")
+        f"{'surface':<24} {'a':>7} {'PSF gain':>10} "
+        f"{'radiative':>11} {'rest':>7}"
     )
     print(
         f"{'lambertian':<24} {1.0:7.3f} "
         f"{mean(lambertian['lam_psf'], lambertian['lam_nopsf']):9.2f}x "
-        f"{'-':>11} {1.0:9.2f}x"
+        f"{'-':>11} {'100%':>7}"
     )
     for row in frame.itertuples():
         arms = rtls[row.site]
+        # The operational error splits in two: what would remain if the
+        # radiative terms were right, and the rest, which the Lambertian
+        # tdif_up and sph_alb put there.  The two are shares of the same
+        # number, so they add up to one.
+        rest = mean(arms["brdf_psf"], arms["lam_psf"])
         print(
             f"{row.site:<24} {row.a:7.3f} "
-            # What the trained kernel buys over doing nothing, on this
-            # surface and with the Lambertian scalars the study uses.
+            # What the Lambertian-trained kernel buys over no adjacency
+            # correction at all, on a surface it was not trained for.
             f"{mean(arms['lam_psf'], arms['lam_nopsf']):9.2f}x "
-            # What the Lambertian assumption on tdif_up and sph_alb
-            # costs, kernel held fixed.
-            f"{mean(arms['lam_psf'], arms['brdf_psf']):11.2f}x "
-            # What is left once both are accounted for: the kernel
-            # trained on another surface, plus the limit of 5S itself.
-            f"{mean(arms['brdf_psf'], lambertian['lam_psf']):9.2f}x"
-            # Only when the kernel was retrained on this surface: what is
-            # left is then the limit of the 5S formula alone.
-            + (
-                f"{mean(arms[OWN_ARM], lambertian['lam_psf']):11.2f}x"
-                if OWN_ARM in arms
-                else ""
-            )
+            f"{1.0 - rest:10.0%} {rest:7.0%}"
         )
 
     print(f"\n>>> table written to {path}", flush=True)
@@ -677,13 +632,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--saa", type=float, default=0.0)
     parser.add_argument("--vaa", type=float, default=0.0)
     parser.add_argument("--species", type=str, default="sulphate")
-    parser.add_argument(
-        "--own-kernel", action="store_true",
-        help=(
-            "also fit one kernel per surface; see with_scalars, the target "
-            "it trains against is not the one it is scored on yet"
-        ),
-    )
     parser.add_argument("--rho-max", type=float, default=0.3)
     parser.add_argument(
         "--scales",
@@ -825,13 +773,6 @@ def main() -> None:
             "brdf_nopsf": errors(scenes, *common, scalars=scalars, deconvolve=False),
             "brdf_psf": errors(scenes, *common, scalars=scalars),
         }
-        if args.own_kernel:
-            print(f">>> fitting a kernel on {row.site} itself", flush=True)
-            own, params = train(with_scalars(scenes, scalars, band), band, run)
-            print(f"    {params}", flush=True)
-            rtls_arms[row.site][OWN_ARM] = errors(
-                scenes, truth, own, band, run.device, scalars=scalars
-            )
 
     report(lambertian_arms, rtls_arms, frame, OUTPUT / f"hotspot_rmse{suffix}.csv")
 
