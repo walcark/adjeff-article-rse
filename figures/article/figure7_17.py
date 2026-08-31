@@ -237,8 +237,10 @@ def plot(
         ax.set_xlabel(r"Radius $r$ [km]", fontsize=font())
         style_axes(ax)
 
+    # One legend for the pair.  The two panels draw the same curves in the
+    # same colours, and on the encircled energy the box sat on top of the
+    # very part of the CDF the panel is there to show.
     axes[0].legend(loc="upper right", fontsize=font(10 / 12))
-    axes[1].legend(loc="lower right", fontsize=font(10 / 12))
 
     species = SPECIES_LABEL.get(args.species, args.species)
     fig.suptitle(
