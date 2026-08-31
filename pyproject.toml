@@ -62,7 +62,12 @@ cuda-cudart-dev = "12.9.*"
 cuda-nvcc = "12.9.*"
 
 [tool.pixi.system-requirements]
-cuda = "12.9"
+# The driver floor, not the toolkit version: the three pins above stay at
+# 12.9 because conda-forge builds pycuda against `cuda-version >=12.9`, and
+# no 12.4 build of it exists.  CUDA 12 minor version compatibility runs that
+# toolkit on any 12.x driver, so pinning this floor to the toolkit version
+# would lock out the CNES servers (driver 12.4) for no reason.
+cuda = "12.0"
 
 # `local` needs ../Adjeff next to this repository; it is a development
 # environment and is not required to reproduce the figures.

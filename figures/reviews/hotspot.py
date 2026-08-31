@@ -506,6 +506,27 @@ def brdf_scalars(
     return pipeline(ImageDict({band: xr.Dataset()}))[band]
 
 
+def _like(new: xr.DataArray, old: xr.DataArray) -> xr.DataArray:
+    """Return *new* carrying the dimensions *old* has, and no others.
+
+    The BRDF samplers sweep ``sza`` where their Lambertian counterparts
+    do not, so ``tdif_up`` and ``sph_alb`` come back with one axis more.
+    The axis is a singleton and changes no value, but ``rho_unif``
+    inherits it and the radial RMSE then reads a differently shaped
+    field: the two arms would be compared on two geometries of the same
+    numbers.  Dropping it is safe only because it is a singleton, which
+    is asserted rather than assumed.
+    """
+    extra = [d for d in new.dims if d not in old.dims]
+    sizes = {d: new.sizes[d] for d in extra}
+    if any(n != 1 for n in sizes.values()):
+        raise RuntimeError(
+            f"cannot drop {sizes} from {new.name}: the scene's own copy has "
+            f"{dict(old.sizes)} and the swept axes are not singletons."
+        )
+    return new.squeeze(extra, drop=True) if extra else new
+
+
 def errors(
     scenes: list[tuple[str, ImageDict]],
     truth: dict[str, xr.DataArray],
@@ -525,16 +546,26 @@ def errors(
     forward run computed Lambertian.  *deconvolve* chooses between the
     trained kernel and no adjacency correction at all, the reference
     every corrected number has to be read against.
+
+    The mask is the **truth**, not ``rho_unif``.  Masking on the
+    retrieved field makes the metric depend on the very thing it scores:
+    the landscapes have a background of exactly zero, so ``rho_unif``
+    carries a large atom at zero, and a shift of ``1e-5`` lifts the whole
+    field off it and reshuffles the selected pixels.  Measured on a
+    surface that is Lambertian by construction, that alone moved the RMSE
+    by a factor 2.6 while no two values differed by more than
+    ``1.4e-5``.  Scoring two corrections against two different pixel sets
+    compares nothing.
     """
     out: dict[str, float] = {}
     for name, scene in scenes:
         ds = scene[band]
         if scalars is not None:
-            ds = ds.assign({v: scalars[v] for v in RADIATIVE_VARS})
+            ds = ds.assign({v: _like(scalars[v], ds[v]) for v in RADIATIVE_VARS})
         estimate, uniform = correct(ds, band, kernel, device)
         got = estimate if deconvolve else uniform
         out[name] = float(
-            rmse(got, truth[name], mask=uniform, radial=True, device=device)
+            rmse(got, truth[name], mask=truth[name], radial=True, device=device)
         )
     return out
 
