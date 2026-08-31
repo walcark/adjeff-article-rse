@@ -196,8 +196,14 @@ def plot(
     """Draw the radial profile and the encircled energy of every kernel."""
     all_vals = np.concatenate([k.values.ravel() for k in kernels])
     all_pos = all_vals[all_vals > 0]
-    y_min = 10 ** np.floor(np.log10(all_pos.min()))
-    y_max = 10 ** np.ceil(np.log10(all_pos.max()))
+    # The exponents, not the bounds, are what the axis is built from.  The
+    # kernels are float32, so `10 ** np.floor(np.log10(x))` stays float32
+    # and lands on 0.009999999776 rather than 1e-2.  Matplotlib then tests
+    # each tick with `_is_decade` and, depending on where the float error
+    # falls, writes `10^{-6}`, `1 x 10^{-6}`, or nothing at all.
+    exp_min = int(np.floor(np.log10(float(all_pos.min()))))
+    exp_max = int(np.ceil(np.log10(float(all_pos.max()))))
+    y_min, y_max = 10.0**exp_min, 10.0**exp_max
 
     # Height grown from 3.0 to leave room for the header without shrinking the
     # plotting area.
@@ -219,8 +225,7 @@ def plot(
 
     # Anchor the decade ticks on y_max: the log locator would otherwise pick a
     # different decade parity from one figure of the series to the next.
-    n_decades = round(np.log10(y_max / y_min))
-    axes[0].set_yticks([y_max * 10.0 ** (-2 * k) for k in range(n_decades // 2 + 1)])
+    axes[0].set_yticks([10.0**e for e in range(exp_max, exp_min - 1, -2)])
 
     axes[0].set_title(r"(a) PSF", pad=5, fontsize=font())
     axes[1].set_title(r"(b) Encircled Energy", pad=5, fontsize=font())
