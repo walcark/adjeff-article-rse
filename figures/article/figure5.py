@@ -30,7 +30,7 @@ def main() -> None:
         band=BAND,
         run=run,
         psf_type=KingPSF,
-        init_parameters={"sigma": 0.1, "gamma": 1.0},
+        init_parameters={"sigma": 0.1, "gamma": 2.0},
         label="King",
     )
 

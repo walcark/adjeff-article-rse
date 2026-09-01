@@ -241,7 +241,7 @@ def train(
         [band],
         res_km=run.res_km,
         n=run.n,
-        init_parameters={"sigma": 0.1, "gamma": 1.0},
+        init_parameters={"sigma": 0.1, "gamma": 2.0},
         device=run.device,
     )
     tree = fit(
