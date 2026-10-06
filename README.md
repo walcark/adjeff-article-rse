@@ -29,6 +29,7 @@ The structure of the repository is organized as follow.
 # Not important to the user
 ├── scripts/                            # Contains useful help scripts
     ├── auxdata.py                      # Download Smart-G auxdata and add additionnal useful data
+    ├── build_cams_auxdata.py           # Rebuild data/cams_aer_auxdata from MOPSMAP
     ├── export_smartg_auxdata.py        # Useful to export the Smart-G env variable before computation
 ├── src/                                # Source modules used in the scripts
 └── LICENSE                             # Apache 2.0
@@ -76,6 +77,18 @@ The scripts ``scripts/auxdata.py`` allows to download Smart-G auxiliary data wit
 pixi run download_auxdata
 ```
 
+That step also copies two things the standard Smart-G dataset does not
+carry: the simplified exponential AFGL profile of `data/afgl_auxdata`, and
+the optical properties of the eight CAMS aerosol species of
+`data/cams_aer_auxdata`. Both are versioned here, so reproducing the
+figures needs no extra download.
+
+The CAMS tables were produced with MOPSMAP, through
+[pymopsmap](https://github.com/walcark/pymopsmap).
+`scripts/build_cams_auxdata.py` is the script that produced them and
+documents the grid they are tabulated on; running it needs the MOPSMAP
+binary and its optical dataset, which reproducing the figures does not.
+
 ### Compute a figure
 
 The ``makefig`` shell file allows to simply call each ``figures/figureX.py`` file, using the following command:
@@ -92,7 +105,7 @@ Output files are written to `output/`.
 
 ### Logging
 
-adjeff 0.13.0 prints nothing until asked, so the figure scripts ask on
+adjeff 0.15.0 prints nothing until asked, so the figure scripts ask on
 your behalf. Every one of them takes:
 
 ```bash
