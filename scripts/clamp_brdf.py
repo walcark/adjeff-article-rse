@@ -81,14 +81,14 @@ def device_source() -> Path:
         When Smart-G is not importable or the file is not where it says.
     """
     try:
-        from smartg.smartg import src_device
+        from smartg.smartg import SRC_DEVICE
     except ImportError as exc:
         raise RuntimeError(
             "smartg is not importable from this environment; run this "
             "through pixi, e.g. `pixi run -e local python "
             "scripts/clamp_brdf.py --status`"
         ) from exc
-    path = Path(src_device)
+    path = Path(SRC_DEVICE)
     if not path.is_file():
         raise RuntimeError(f"smartg points at {path}, which does not exist")
     return path

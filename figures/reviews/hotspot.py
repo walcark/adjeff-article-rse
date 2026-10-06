@@ -193,12 +193,13 @@ def rtls_surface(k1p: float, k2p: float) -> Iterator[None]:
 
     Notes
     -----
-    The coefficients are passed through the deprecated ``kp`` argument
-    on purpose: the ``k0=``/``k1p=``/``k2p=`` keywords of Smart-G 1.2.0
-    assign into a tuple and raise ``TypeError``.
+    Smart-G 1.2.0 raised ``TypeError`` on the ``k0=``/``k1p=``/``k2p=``
+    keywords, writing into the tuple default they were given, so the
+    coefficients used to travel through ``kp``.  2.0 fixed them and
+    deprecated ``kp`` in turn.
     """
-    from smartg.smartg import RTLSSurface
-    from smartg.water import Albedo_cst
+    from smartg.albedo import AlbedoCst
+    from smartg.surface import RTLSSurface
 
     from adjeff.atmosphere import SurfaceFactory
 
@@ -207,11 +208,9 @@ def rtls_surface(k1p: float, k2p: float) -> Iterator[None]:
     def patched(self, arr: xr.Dataset):
         params = arr["rho_s"].adjeff.params() or {}
         return RTLSSurface(
-            kp=(
-                Albedo_cst(float(params["rho_max"])),
-                Albedo_cst(k1p),
-                Albedo_cst(k2p),
-            )
+            k0=AlbedoCst(float(params["rho_max"])),
+            k1p=AlbedoCst(k1p),
+            k2p=AlbedoCst(k2p),
         )
 
     SurfaceFactory.surface = patched  # type: ignore[method-assign]
