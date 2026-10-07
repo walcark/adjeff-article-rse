@@ -4,20 +4,9 @@ For each value of the swept parameter, a King PSF is optimised on three
 disk training fields (radii 1, 5, 50 km).  The resulting kernels are
 compared on two subplots: radial profile (log scale) and encircled energy.
 
-The encircled energy comes from ``adjeff.analysis.encircled_energy``,
-which reads the cumulated energy at the outer edge of each annulus.  The
-radial profile's own ``cdf`` statistic answers on the bin centres
-instead, half a bin short of the radius the normalisation is taken at, so
-its curve stops just below one.
-
 Panel (b) is normalised on the plane rather than on the grid, so each
 curve stops at the fraction of its energy the 240 km domain actually
-holds: 95.6 % for a kernel fitted at an aerosol optical thickness of 0.1,
-99.4 % at 0.7.  Grid normalisation sends all four to one at the edge,
-which hides that factor of seven and makes the curves converge exactly
-where the range question is asked.  The ceiling is an extrapolation of
-the fitted King beyond the simulated domain, and it is the widest kernel
-whose ceiling is least certain.
+holds.
 
 Usage
 -----

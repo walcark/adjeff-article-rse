@@ -24,7 +24,7 @@ generate/            everything that produces something
 inputs/              what the repository needs and does not produce
 ├── cams/            optical properties of the 8 CAMS species, versioned
 ├── afgl/            the simplified exponential AFGL profile, versioned
-├── modis/           the MODIS skylight table, versioned
+├── modis/           the MODIS skylight table and BRDF weights, versioned
 ├── gloria/          pre-processed GLORIA matchups, versioned
 └── smartg_auxdata/  downloaded by `pixi run download-auxdata`, ignored
 

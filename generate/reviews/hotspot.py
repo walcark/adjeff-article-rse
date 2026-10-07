@@ -113,10 +113,12 @@ OUTPUT = REPO_ROOT / "results" / "tables"
 def load_ensemble(args: argparse.Namespace) -> pd.DataFrame:
     """Return the MCD43A1 ensemble, from the cache or from the service.
 
-    The cached CSV is the supported hand-off point: any tool able to
-    export ``site``, ``f_iso``, ``f_geo`` and ``f_vol`` (AppEEARS, Earth
-    Engine, a local granule read) can feed this study without going
-    through the ORNL web service.
+    The CSV is the supported hand-off point: any tool able to export
+    ``site``, ``f_iso``, ``f_geo`` and ``f_vol`` (AppEEARS, Earth Engine,
+    a local granule read) can feed this study without going through a web
+    service at all.  `inputs/modis/mcd43a1_sites.csv` is the versioned
+    one, so a fresh clone needs no Earthdata account; `--refresh-sites`
+    fetches again and overwrites it, which git then shows.
     """
     path = Path(args.sites_csv)
     if path.exists() and not args.refresh_sites:
@@ -657,7 +659,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--sites-csv",
         type=Path,
-        default=OUTPUT / "hotspot_mcd43a1_sites.csv",
+        default=REPO_ROOT / "inputs" / "modis" / "mcd43a1_sites.csv",
         help="cached MODIS ensemble; reused when present",
     )
     parser.add_argument("--refresh-sites", action="store_true")
