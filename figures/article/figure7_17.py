@@ -40,7 +40,7 @@ from adjeff.modules.models import Unif2Surface
 from adjeff.optim import Loss, Metric, TrainingImages, fit
 
 from adjeff_article_1.runconfig import RunConfig, parse_run
-from adjeff_article_1.scenes import disk_scenes
+from adjeff_article_1.scenes import disk_scenes, mixed_scenes
 from adjeff_article_1.style import (
     font,
     save,
@@ -62,10 +62,8 @@ SWEEP_LABEL = {
     "vza": lambda v: f"VZA $= {v}°$",
 }
 
-# Name of the swept parameter, as printed in the figure header.  Reviewer 3
-# asked for the aerosol type to be readable from the graphic alone; the header
-# also carries the relative humidity, which drives the particle size, and the
-# parameter being swept, without which the legend values are ambiguous.
+# Name of the swept parameter, as printed in the figure header, which
+# also carries the aerosol type and the relative humidity.
 HEADER_SWEEP_LABEL = {
     "aot": "AOT",
     "h": "$h$ [km]",
@@ -84,6 +82,11 @@ SPECIES_LABEL = {
 }
 
 SWEEPABLE = list(SWEEP_LABEL)
+
+# Landscapes the kernel is fitted on.  `disks` is what figures 7 to 17
+# were drawn with; `mixed` is the six-landscape set the lookup table uses,
+# which constrains the core and the tail at once.
+TRAINING_SETS = {"disks": disk_scenes, "mixed": mixed_scenes}
 
 
 def detect_sweep(args: argparse.Namespace) -> tuple[str, list[float]]:
@@ -141,7 +144,8 @@ def run_one(
     """Return the kernel optimised for one point of the sweep.
 
     Every sweepable argument is read at its first value except the one
-    being swept, which takes *value*.
+    being swept, which takes *value*.  ``--training`` picks the landscapes
+    the kernel is fitted on.
     """
 
     def at(name: str) -> float:
@@ -160,7 +164,8 @@ def run_one(
         vaa=args.vaa,
         species={args.species: 1.0},
     )
-    scenes = disk_scenes(band, run, cfg=cfg, remove_rayleigh=args.remove_rayleigh)
+    builder = TRAINING_SETS[args.training]
+    scenes = builder(band, run, cfg=cfg, remove_rayleigh=args.remove_rayleigh)
     return optimised_kernel(band, run, scenes)
 
 
@@ -183,6 +188,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--vaa", type=float, default=0.0)
     parser.add_argument("--species", type=str, default="sulphate")
     parser.add_argument("--remove_rayleigh", action="store_true")
+    parser.add_argument(
+        "--training",
+        choices=sorted(TRAINING_SETS),
+        default="disks",
+        help="landscapes to fit the kernel on (default: disks)",
+    )
     return parser
 
 
@@ -196,11 +207,8 @@ def plot(
     """Draw the radial profile and the encircled energy of every kernel."""
     all_vals = np.concatenate([k.values.ravel() for k in kernels])
     all_pos = all_vals[all_vals > 0]
-    # The exponents, not the bounds, are what the axis is built from.  The
-    # kernels are float32, so `10 ** np.floor(np.log10(x))` stays float32
-    # and lands on 0.009999999776 rather than 1e-2.  Matplotlib then tests
-    # each tick with `_is_decade` and, depending on where the float error
-    # falls, writes `10^{-6}`, `1 x 10^{-6}`, or nothing at all.
+    # Built from the exponents, not the bounds: in float32 a decade
+    # lands on 0.009999999776 and matplotlib then labels it at random.
     exp_min = int(np.floor(np.log10(float(all_pos.min()))))
     exp_max = int(np.ceil(np.log10(float(all_pos.max()))))
     y_min, y_max = 10.0**exp_min, 10.0**exp_max
@@ -237,9 +245,8 @@ def plot(
         ax.set_xlabel(r"Radius $r$ [km]", fontsize=font())
         style_axes(ax)
 
-    # One legend for the pair.  The two panels draw the same curves in the
-    # same colours, and on the encircled energy the box sat on top of the
-    # very part of the CDF the panel is there to show.
+    # One legend for the pair: same curves, and on panel (b) the box sat
+    # on the part of the CDF the panel exists to show.
     axes[0].legend(loc="upper right", fontsize=font(10 / 12))
 
     species = SPECIES_LABEL.get(args.species, args.species)
@@ -251,7 +258,10 @@ def plot(
         fontsize=font(13 / 12),
     )
 
-    save(fig, args.figure, run.figs_dir)
+    # Suffixed so a `mixed` run does not overwrite the figure the
+    # manuscript carries.
+    name = args.figure if args.training == "disks" else f"{args.figure}_mixed"
+    save(fig, name, run.figs_dir)
     if not run.smoke:
         plt.show()
 
@@ -263,9 +273,8 @@ def main() -> None:
     run = run.resolve(n=N, res_km=RES_KM)
     use_article_style()
 
-    # A sweep is what this script draws, so a bare `--smoke` has nothing
-    # to plot.  Give it the smallest one rather than making the smoke
-    # runner carry a table of per-script arguments.
+    # A bare `--smoke` has no sweep to draw, so give it the smallest
+    # one rather than teaching the runner per-script arguments.
     if run.smoke and not any(len(getattr(args, name)) > 1 for name in SWEEPABLE):
         args.aot = [0.1, 0.5]
 

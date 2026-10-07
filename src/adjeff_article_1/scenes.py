@@ -27,6 +27,7 @@ __all__ = [
     "gauss_scenes",
     "gg_parameter_grid",
     "make_cache",
+    "mixed_scenes",
 ]
 
 # Landscape sizes used throughout the manuscript, in km.
@@ -162,3 +163,43 @@ def gg_parameter_grid(
         for s in sigma_vals
         for n in n_vals
     ]
+
+
+def mixed_scenes(
+    band: SensorBand,
+    run: RunConfig,
+    cfg: FullConfig | None = None,
+    sigmas: tuple[float, ...] = GAUSS_SIGMAS,
+    radii: tuple[float, ...] = DISK_RADII,
+    **pipeline_kwargs: object,
+) -> list[ImageDict]:
+    """Run the forward pipeline on the Gaussians and the disks together.
+
+    The six landscapes the manuscript fits its lookup table on.  A
+    Gaussian carries one spatial scale and a disk carries every frequency
+    of its edge, so fitting on both at once constrains the kernel's core
+    and its tail at the same time.
+
+    Parameters
+    ----------
+    band : SensorBand
+        Band to simulate.
+    run : RunConfig
+        Grid size, photon budget and cache location.
+    cfg : FullConfig or None
+        Atmosphere to use.  Defaults to :func:`article_config`.
+    sigmas : tuple[float, ...]
+        Gaussian widths in km.
+    radii : tuple[float, ...]
+        Disk radii in km.
+    **pipeline_kwargs
+        Extra keywords forwarded to ``run_forward_pipeline``.
+
+    Returns
+    -------
+    list[ImageDict]
+        The Gaussians first, then the disks.
+    """
+    return gauss_scenes(band, run, cfg, sigmas, **pipeline_kwargs) + disk_scenes(
+        band, run, cfg, radii, **pipeline_kwargs
+    )
