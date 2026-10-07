@@ -1,6 +1,6 @@
 """Companion package for Article 1 on adjacency effects in Sentinel-2.
 
-The figure scripts in ``figures/`` hold nothing but the figure they draw.
+The scripts in ``generate/`` hold nothing but what they produce.
 Everything they share lives in the submodules below:
 
 - :mod:`.style` matplotlib theme, tick and spine weights, panel titles.
@@ -12,18 +12,28 @@ Everything they share lives in the submodules below:
   at.
 - :mod:`.psf_comparison` the figure shared by two of the scripts.
 
-``shim``, which held stand-ins for primitives adjeff did not expose, is
-gone: adjeff 0.11.0 provides all of them.
+- :mod:`.utils` the three roots: ``inputs/`` for what the repository
+  needs, ``results/`` for what it produces, and a cache outside the tree.
 
-Only the environment bootstrap is re-exported here.  ``scripts/
-export_smartg_auxdata.py`` imports this package to locate the Smart-G
-auxiliary data, which happens *before* ``SMARTG_DIR_AUXDATA`` is set, so
-importing anything that reaches ``adjeff`` (and therefore ``smartg``)
-from this module would make the bootstrap fail.  Figure scripts import
-the submodules they need explicitly.
+Only the environment bootstrap is re-exported here.  ``tools/smartg_env.py``
+imports this package to locate the Smart-G auxiliary data, which happens
+*before* ``SMARTG_DIR_AUXDATA`` is set, so importing anything that reaches
+``adjeff`` (and therefore ``smartg``) from this module would make the
+bootstrap fail.  Scripts import the submodules they need explicitly.
 """
 
 from .download_auxdata import download_smartg_auxdata_and_cams
-from .utils import get_auxdata_path
+from .utils import (
+    get_auxdata_path,
+    get_cache_path,
+    get_inputs_path,
+    get_results_path,
+)
 
-__all__ = ["download_smartg_auxdata_and_cams", "get_auxdata_path"]
+__all__ = [
+    "download_smartg_auxdata_and_cams",
+    "get_auxdata_path",
+    "get_cache_path",
+    "get_inputs_path",
+    "get_results_path",
+]

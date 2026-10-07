@@ -83,4 +83,7 @@ local = ["local"]
 # ── Tâches ───────────────────────────────────────────────────────────────────
 [tool.pixi.tasks]
 figures-all = { cmd = "bash makefig" }
-download_auxdata = { cmd = "python scripts/auxdata.py" }
+download-auxdata = { cmd = "python -m adjeff_article_1.download_auxdata" }
+smoke = { cmd = "python generate/smoke.py" }
+build-cams = { cmd = "python generate/sedoo/build_cams_auxdata.py" }
+build-lut = { cmd = "python generate/sedoo/build_psf_lut.py" }

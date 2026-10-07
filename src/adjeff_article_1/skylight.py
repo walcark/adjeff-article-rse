@@ -34,6 +34,8 @@ from __future__ import annotations
 import functools
 from pathlib import Path
 
+from .utils import get_inputs_path
+
 import numpy as np
 
 from ._logging import get_logger
@@ -44,7 +46,7 @@ logger = get_logger(__name__)
 
 #: Shipped with the repository: it is 540 kB of ASCII and the figure
 #: must not depend on a host being up.
-LUT_PATH = Path(__file__).resolve().parents[2] / "data" / "modis" / "skyl_lut.dat"
+LUT_PATH = get_inputs_path() / "modis" / "skyl_lut.dat"
 
 #: Wavelength range of each band the table covers, in nanometres, so a
 #: caller can check it is asking on the band its coefficients came from.

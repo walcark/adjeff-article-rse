@@ -13,7 +13,7 @@ Changing it would break the meaning of the distributed coefficients.
 
 The fit is not constrained positive and goes below zero at grazing view
 for an anisotropic surface.  `shape_of` can hold it at zero, which
-Smart-G can be made to do too, see ``scripts/clamp_brdf.py``: the two
+Smart-G can be made to do too, see ``tools/clamp_brdf.py``: the two
 must agree, or a correction is judged against a truth simulated for
 another surface.
 """

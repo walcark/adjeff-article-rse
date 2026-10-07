@@ -10,33 +10,42 @@ Contains the scripts that reproduce every figure in the paper, and the associate
 
 The structure of the repository is organized as follow.
 
-```
-# Main folders of interest
-├── figures/
-│   ├── figure2.py                      # Script to generate figure 2
-│   ├── figure3.py                      # Script to generate figure 3
-│   ├── ...
-├── output/                             # Contains output figures
-├── data/                               # Contains data useful for figure generation
-    ├── afgl_auxdata/
-    ├── cams_aer_auxdata/
-├── pyproject.toml                      # Useful to manage pixi environments
-├── install_env                         # Simple script to install pixi (if necessary) and the project environment 
-├── makefig                             # Main script to compute figures with adjeff
-├── README.md                           # Instructions on how to use the repository
-
-
-# Not important to the user
-├── scripts/                            # Contains useful help scripts
-    ├── auxdata.py                      # Download Smart-G auxdata and add additionnal useful data
-    ├── build_cams_auxdata.py           # Rebuild data/cams_aer_auxdata from MOPSMAP
-    ├── export_smartg_auxdata.py        # Useful to export the Smart-G env variable before computation
-├── src/                                # Source modules used in the scripts
-└── LICENSE                             # Apache 2.0
+Three directories carry the whole layout, and the name of each says what
+is in it: `generate/` produces, `inputs/` is needed, `results/` is
+produced.
 
 ```
+generate/            everything that produces something
+├── figures/         figure2.py ... figures22-23.py, the article's figures
+├── reviews/         analyses supporting the responses to the reviewers
+├── sedoo/           the datasets deposited on the SEDOO portal
+└── smoke.py         checks every script above still runs
 
-The scripts for figure generation are stored in ``figures/``, and generate figures stored in ``output/``. All the data required to perform computation are stored in ``data/`` (mainly Smart-G auxiliary data, but also some pre-treated data). 
+inputs/              what the repository needs and does not produce
+├── cams/            optical properties of the 8 CAMS species, versioned
+├── afgl/            the simplified exponential AFGL profile, versioned
+├── modis/           the MODIS skylight table, versioned
+├── gloria/          pre-processed GLORIA matchups, versioned
+└── smartg_auxdata/  downloaded by `pixi run download-auxdata`, ignored
+
+results/             everything produced, ignored by git
+├── figures/         .png
+├── tables/          .csv and .tex
+├── sedoo/           what gets deposited
+└── smoke/           the smoke run's own output
+
+tools/               neither produced nor required: the environment
+├── clamp_brdf.py    turns Smart-G's Ross-Li clamp on and off
+└── smartg_env.py    prints the `export SMARTG_DIR_AUXDATA=` line
+
+src/adjeff_article_1/   the library every script under generate/ imports
+makefig                 builds one figure or all of them
+install_env             installs pixi and the environment
+```
+
+The Smart-G cache is deliberately outside the repository, under
+`~/.cache/adjeff-article/`: it runs to gigabytes, it is reproducible, and
+a lookup table takes long enough that it has to survive a reboot.
 
 The ``pyproject.toml`` is used by pixi (or any environment manager you may want to use) in order to install the dependencies required to compute the figures. If you wish to keep it simple, simply launch the ``install_env`` script that will locally install ``pixi`` on your system and automatically install the dependencies.
 
@@ -71,21 +80,22 @@ pixi install -e gpu
 
 ### Download Smart-G auxiliary data
 
-The scripts ``scripts/auxdata.py`` allows to download Smart-G auxiliary data with the same process described on the Smart-G GitHub page (https://github.com/hygeos/smartg). It can easily be launched with the following pixi command:
+Smart-G auxiliary data is downloaded the way the Smart-G GitHub page
+describes (https://github.com/hygeos/smartg), with:
 
 ```bash
-pixi run download_auxdata
+pixi run download-auxdata
 ```
 
 That step also copies two things the standard Smart-G dataset does not
-carry: the simplified exponential AFGL profile of `data/afgl_auxdata`, and
+carry: the simplified exponential AFGL profile of `inputs/afgl`, and
 the optical properties of the eight CAMS aerosol species of
-`data/cams_aer_auxdata`. Both are versioned here, so reproducing the
+`inputs/cams`. Both are versioned here, so reproducing the
 figures needs no extra download.
 
 The CAMS tables were produced with MOPSMAP, through
 [pymopsmap](https://github.com/walcark/pymopsmap).
-`scripts/build_cams_auxdata.py` is the script that produced them and
+`generate/sedoo/build_cams_auxdata.py` is the script that produced them and
 documents the grid they are tabulated on; running it needs the MOPSMAP
 binary and its optical dataset, which reproducing the figures does not.
 
@@ -101,7 +111,7 @@ chmod +x makefig
 ./makefig              # to compute all the figures successively (quite long)
 ```
 
-Output files are written to `output/`.
+Output files are written to `results/figures/`.
 
 ### Logging
 

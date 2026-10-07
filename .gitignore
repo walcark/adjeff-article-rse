@@ -2,18 +2,17 @@
 .pixi/*
 !.pixi/config.toml
 
-# generated figures
-output/*
-!output/.gitkeep
+# everything generate/ produces
+results/
+
+# the Smart-G auxiliary dataset, downloaded by `pixi run download-auxdata`
+inputs/smartg_auxdata/
 
 # python cache files
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-
-# ignore smartg auxdata
-data/smartg_auxdata
 
 # credentials must never be committed: the loader reads them from
 # ~/.config/adjeff-article/credentials.toml, from the environment or

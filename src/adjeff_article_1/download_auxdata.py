@@ -36,7 +36,7 @@ def download_smartg_auxdata_and_cams() -> None:
             download(AUXDATA_PATH, data_type="all")
 
     # Merge CAMS aerosol optical properties with Smart-G auxdata
-    camsdata_path: Path = ROOT_PATH / "data/cams_aer_auxdata"
+    camsdata_path: Path = ROOT_PATH / "inputs/cams"
     if camsdata_path.is_dir():
         for file in camsdata_path.glob("*"):
             if not str(file).endswith("_sol.nc"):
@@ -47,9 +47,13 @@ def download_smartg_auxdata_and_cams() -> None:
         print(f"[ERROR] Did not find CAMS optical properties at: {camsdata_path}")
 
     # Merge the exponential AFGL profile with Smart-G auxdata
-    profile_file: Path = ROOT_PATH / "data/afgl_auxdata/afgl_exp_h8km.nc"
+    profile_file: Path = ROOT_PATH / "inputs/afgl/afgl_exp_h8km.nc"
     if profile_file.is_file():
         print(f"[INFO] Copying file {profile_file} to {AUXDATA_ATMO_PATH} ...")
         shutil.copy(src=profile_file, dst=AUXDATA_ATMO_PATH)
     else:
         print(f"[ERROR] Did not find AFGL exponential profile file: {profile_file}")
+
+
+if __name__ == "__main__":
+    download_smartg_auxdata_and_cams()

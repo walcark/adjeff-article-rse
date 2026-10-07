@@ -19,6 +19,7 @@ from pathlib import Path
 import adjeff
 
 from . import _logging as article_logging
+from .utils import get_cache_path, get_results_path
 
 __all__ = ["ARTICLE_ATMOSPHERE", "RunConfig", "add_run_arguments", "parse_run"]
 
@@ -36,10 +37,12 @@ ARTICLE_ATMOSPHERE: dict[str, float | dict[str, float]] = {
     "species": {"sulphate": 1.0},
 }
 
-#: Repository root, so that a script's depth under `figures/` does
-#: not decide where it writes.
+#: Repository root, so that a script's depth under `generate/` does not
+#: decide where it writes.
 REPO_ROOT = Path(__file__).resolve().parents[2]
 _REPO_ROOT = REPO_ROOT
+_RESULTS = get_results_path()
+_CACHE = get_cache_path()
 
 
 @dataclass(frozen=True)
@@ -76,8 +79,8 @@ class RunConfig:
     res_km: float = 0.05
     n_samples: int | None = None
     device: str = "cuda"
-    figs_dir: Path = _REPO_ROOT / "output"
-    cache_dir: str = "/tmp/adjeff-figures"
+    figs_dir: Path = _RESULTS / "figures"
+    cache_dir: str = str(_CACHE / "figures")
     smoke: bool = False
     explicit: frozenset[str] = frozenset()
 
@@ -129,8 +132,8 @@ class RunConfig:
             n_ph=int(1e3),
             n_samples=2,
             device="cpu",
-            figs_dir=_REPO_ROOT / "output" / "smoke",
-            cache_dir="/tmp/adjeff-figures-smoke",
+            figs_dir=_RESULTS / "smoke",
+            cache_dir=str(_CACHE / "smoke"),
             smoke=True,
         )
 
