@@ -63,11 +63,9 @@ def correct(
     )
     model.eval()
     scene = model(scene)
-    # Peel the atmospheric dimensions that were never swept.  A scene
-    # built from a single state keeps `aot`, `rh`, `h`, `href`, `vza` and
-    # `sza` as length-one dimensions, which carry nothing and which the
-    # error metrics refuse to broadcast against a plain 2-D truth.  A
-    # caller that tidied its input first sees no change.
+    # Peel the length-one atmospheric dimensions a single-state scene
+    # keeps: the error metrics will not broadcast them against a 2-D
+    # truth.
     return (
         scene[band]["rho_s_est"].squeeze(drop=True),
         scene[band]["rho_unif"].squeeze(drop=True),

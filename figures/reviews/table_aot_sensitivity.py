@@ -1,8 +1,8 @@
 r"""Surface reflectance error induced by an AOT misestimation.
 
-Answers reviewer question T9: give a first-order quantitative estimate of
-the surface-reflectance error caused by a +/-0.2 deviation between the
-tile-mean AOT used for the correction and the true local AOT.
+A first-order estimate of the surface-reflectance error caused by a
++/-0.2 deviation between the tile-mean AOT used for the correction and
+the true local AOT.
 
 A single AOT estimate feeds both the 5S scalar terms (rho_atm, T_up,
 T_down, s) and the shape of the PSF, so a wrong AOT corrupts both.  The
@@ -16,7 +16,7 @@ from the very same simulations:
                     error, outside the scope of this paper.
   - ``eps_psf``     only the PSF uses the tile-mean AOT, the scalar terms
                     match the true AOT.  Error attributable to the single
-                    tile-averaged kernel, i.e. the reviewer's concern.
+                    tile-averaged kernel, which is what this measures.
 
 Two reference columns are reported alongside: ``no_adj_corr`` (rho_unif
 compared to rho_s, i.e. no adjacency correction at all) and ``matched``
@@ -166,12 +166,9 @@ def evaluate_band(
 
             for name, pick in CASES.items():
                 aot_scalar, aot_psf = pick(aot_true, aot_ref)
-                # The TOA reflectance is the one actually measured, at
-                # aot_true, while the 5S scalar terms are taken at
-                # aot_scalar and the kernel at aot_psf.  Mixing those
-                # three is what isolates the error contributions.
-                # `sel` keeps the aot it picked as a coordinate, and
-                # `tidy` peels the parameters that were never swept.
+                # rho_toa at aot_true, the 5S scalar terms at
+                # aot_scalar, the kernel at aot_psf: mixing the three is
+                # what isolates each error contribution.
                 est, unif = correct(
                     ds=at_aot(ds, aot_scalar),
                     band=band,

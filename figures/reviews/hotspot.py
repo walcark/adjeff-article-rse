@@ -101,19 +101,10 @@ SITES: tuple[tuple[str, float, float], ...] = (
 #: 1 % of their upward flux where the Ross-Li fit turns negative.
 CHOSEN = ("skukuza-savanna", "libya4-desert", "konza-grassland")
 
-#: Landscapes whose retrieval error is dominated by an edge the
-#: deconvolution cannot resolve rather than by adjacency, and which
-#: therefore discriminate no surface.  A disk of 1 km on a 50 m grid has
-#: a one-pixel edge: its Lambertian error is 0.018 against 0.0009 for a
-#: Gaussian of the same size, twenty times larger, and it swings by 15 %
-#: between two runs that differ only in their random draws.  Measured,
-#: the most anisotropic surface scores 1.08 and 1.21 times the Lambertian
-#: one there, against 5 to 8 everywhere else.
-#:
-#: They stay in the training set, which needs their high frequencies and
-#: must remain the article's.  They are reported and then set aside, on a
-#: criterion that is prior to the result and checkable: whether the
-#: landscape is retrievable at all.
+#: Landscapes whose error comes from a one-pixel edge rather than from
+#: adjacency, so they discriminate no surface: 20 times the Lambertian
+#: error of a Gaussian of the same size, and 15 % run to run.  Kept in
+#: the training set, excluded from the ratios.
 UNINFORMATIVE = ("disk1", "disk5")
 
 OUTPUT = REPO_ROOT / "output"
@@ -163,10 +154,8 @@ def _fetch_ensemble(args: argparse.Namespace) -> pd.DataFrame:
         timeout_s=args.appeears_timeout,
     )
     frame = pd.DataFrame(rows)
-    # `device.cu` wants the weights relative to the isotropic one.  The
-    # ORNL path derives these itself and the CSV reload derives them when
-    # absent; AppEEARS returns the three absolute weights, so it is
-    # derived here rather than in three places.
+    # `device.cu` wants the weights relative to the isotropic one, and
+    # AppEEARS returns the three absolute ones.
     frame["k1p"] = frame["f_geo"] / frame["f_iso"]
     frame["k2p"] = frame["f_vol"] / frame["f_iso"]
     return frame
@@ -252,9 +241,8 @@ def train(
     kernel = psf_kernel(tree, band).squeeze(drop=True)
     params = model.psf_params(band)
 
-    # Joint training over six 3999x3999 landscapes is memory hungry.
-    # The model is released before returning so that a second training
-    # in the same process does not add to the peak.
+    # Released before returning: a second training in the same process
+    # would otherwise add to the peak of six 3999x3999 landscapes.
     del model, tree
     if run.device.startswith("cuda"):
         import torch
@@ -422,12 +410,9 @@ def simulate(
     )
     pipeline = {"nr": args.nr, "n_ph": run.n_ph}
 
-    # The Lambertian surface has no BRDF, so the clamp cannot change it:
-    # its store is deliberately shared between the two modes.  Recomputing
-    # it per mode gave the reference different random draws, and the two
-    # runs disagreed by 5.6 % on a quantity that is identical by
-    # construction.  That noise was larger than what libya4 and konza
-    # were being measured at.
+    # Shared between clamped and unclamped modes: the clamp cannot touch
+    # a surface with no BRDF, and recomputing it cost 5.6 % of noise on a
+    # quantity identical by construction.
     print(">>> forward pipeline, Lambertian", flush=True)
     store = CacheStore(lambertian_cache(run))
     lambertian = [
@@ -435,9 +420,8 @@ def simulate(
         for name, image in landscapes(band, args, run)
     ]
 
-    # The cache is keyed on the scene configuration, which the surface
-    # patch does not alter, so each surface needs a store of its own or
-    # it would silently read another surface's result back.
+    # The cache key ignores the surface patch, so each surface needs a
+    # store of its own or it reads another's result back.
     rtls: dict[str, list[tuple[str, ImageDict]]] = {}
     for row in frame.itertuples():
         print(f">>> forward pipeline, RTLS {row.site}", flush=True)
@@ -604,9 +588,8 @@ def report(
     print(table.to_string(index=False, float_format=lambda v: f"{v:.6f}"))
 
     informative = [n for n in names if n not in UNINFORMATIVE]
-    # A mean of ratios rather than a ratio of means: the errors span an
-    # order of magnitude across landscapes, so an arithmetic mean is the
-    # worst landscape and little else.  Each landscape then counts once.
+    # A mean of ratios, not a ratio of means: the errors span an order
+    # of magnitude, so each landscape counts once.
     def mean(numerator: dict[str, float], reference: dict[str, float]) -> float:
         """Return the mean ratio over the informative landscapes."""
         return float(np.mean([numerator[n] / reference[n] for n in informative]))
@@ -627,10 +610,8 @@ def report(
     )
     for row in frame.itertuples():
         arms = rtls[row.site]
-        # The operational error splits in two: what would remain if the
-        # radiative terms were right, and the rest, which the Lambertian
-        # tdif_up and sph_alb put there.  The two are shares of the same
-        # number, so they add up to one.
+        # Share of the operational error the Lambertian tdif_up and
+        # sph_alb put there; `a` is the complement.
         rest = mean(arms["brdf_psf"], arms["lam_psf"])
         print(
             f"{row.site:<24} {row.a:7.3f} "
@@ -766,11 +747,8 @@ def main() -> None:
     # of its own and must not read another one's cache back.
     run = run.resolve(cache_dir=f"{run.cache_dir}/sza{args.sza:g}")
 
-    # The geometry decides how much anisotropy there is to see: at a sun
-    # zenith of 40 degrees the three surfaces sit within 0.03 of
-    # Lambertian and two of them cross it, while at 10 degrees they reach
-    # 0.19 and all sit below.  Runs are named so that the geometries can
-    # be compared rather than overwrite each other.
+    # Named per geometry: the anisotropy on show depends on it, 0.03
+    # from Lambertian at a sun zenith of 40 degrees against 0.19 at 10.
     suffix = f"_sza{args.sza:g}" + ("_clamped" if args.clamp else "")
     band = S2Band.from_wl(args.wl)
     frame = selected_surfaces(args)
@@ -788,10 +766,8 @@ def main() -> None:
         "lam_nopsf": errors(lambertian_scenes, *common, deconvolve=False),
         "lam_psf": errors(lambertian_scenes, *common),
     }
-    # Each surface is corrected four ways: with or without the kernel,
-    # and with the scalar terms of a Lambertian surface or of its own.
-    # Only the second axis needs a new simulation, and only of the six
-    # radiative quantities, which do not depend on the landscape.
+    # Four arms per surface: kernel or not, own scalar terms or
+    # Lambertian ones.  Only the second axis needs a new simulation.
     rtls_arms = {}
     for row in frame.itertuples():
         scenes = rtls_scenes[row.site]

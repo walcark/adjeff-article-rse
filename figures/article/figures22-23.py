@@ -28,9 +28,8 @@ DATA_DIR = REPO_ROOT / "data" / "scatterpoints_figures22-23"
 BANDS = ["B2", "B3", "B4", "B5", "B6", "B7"]
 BANDS_NM = [492, 560, 665, 705, 740, 783]
 
-# Corrections compared against the reference reflectance, in plotting
-# order: (column, marker, legend name).  King is the model of this article
-# and is drawn last so that it sits above the others.
+# Corrections compared, in plotting order: (column, marker, legend).
+# King is drawn last so that it sits above the others.
 MODELS = [
     ("pts_unif", "o", "Unif"),
     ("pts_maja", "s", "Gauss"),

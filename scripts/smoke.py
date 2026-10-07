@@ -121,9 +121,8 @@ def main() -> int:
     wanted = set(args.figures)
     scripts = sorted(
         s
-        # Recursive: the figure scripts live in figures/article and
-        # figures/reviews, and a non-recursive glob silently selected
-        # nothing once they moved there.
+        # Recursive: the scripts live in figures/article and
+        # figures/reviews, and a flat glob selected nothing.
         for s in FIGURES_DIR.rglob("*.py")
         if not s.name.startswith("_")
         and (not wanted or s.stem in wanted)

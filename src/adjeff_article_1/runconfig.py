@@ -198,11 +198,8 @@ def parse_run(
     add_run_arguments(parser)
     args = parser.parse_args()
 
-    # adjeff 0.13.0 prints nothing until asked: it stopped configuring
-    # logging for the process it is imported into, which is a library's
-    # business to leave alone.  Turning it on is the application's, and
-    # here that is the figure script.  Every one of them reaches this
-    # function, so this is the one place it needs saying.
+    # adjeff prints nothing until asked.  Turning logging on is the
+    # application's business, and every figure script reaches here.
     adjeff.setup_logging(level=args.log_level, json=args.log_json)
     # This repository has a namespace of its own, which `setup_logging`
     # knows nothing about; it follows the same level.

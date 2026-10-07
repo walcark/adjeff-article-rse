@@ -89,9 +89,8 @@ def psf_comparison_figure(
     fig, axes = plt.subplots(1, 3, sharey=True, figsize=(8, 3))
 
     for idx, (ax, scene, radius) in enumerate(zip(axes, scenes, DISK_RADII)):
-        # SceneModule.forward() shallow-copies its input, so a prediction
-        # only ever exists in the returned scene.  Reading it back from
-        # `scene` would hand out the untouched ground truth instead.
+        # `forward` shallow-copies, so the prediction only exists in the
+        # returned scene; `scene` still holds the ground truth.
         fitted = model_fitted(scene)[band]["rho_s"]
         reference = model_reference(scene)[band]["rho_s"]
 

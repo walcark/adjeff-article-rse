@@ -47,9 +47,8 @@ logger = get_logger(__name__)
 #: covers every DAAC, so one entry serves them all.
 EARTHDATA_HOST = "urs.earthdata.nasa.gov"
 
-#: Where the file lives unless told otherwise.  Outside the repository,
-#: deliberately: nothing under version control should be able to hold a
-#: password by accident.
+#: Outside the repository, deliberately: nothing under version control
+#: should be able to hold a password by accident.
 DEFAULT_PATH = Path.home() / ".config" / "adjeff-article" / "credentials.toml"
 
 #: Environment variable naming another path.
