@@ -46,6 +46,9 @@ REPO=/work/scratch/env/walcark/adjeff-article-rse
 TRAINING=gauss
 
 export PATH="$SCRATCH/pixi/bin:$PATH"
+# $HOME is on NFS and the compute node reads it badly, which is what sends
+# pixi back to the network.  Keep its cache on the scratch with the rest.
+export PIXI_CACHE_DIR="$SCRATCH/pixi/cache"
 export ADJEFF_ARTICLE_CACHE="$SCRATCH/adjeff-article/cache"
 export SMARTG_DIR_AUXDATA="$SCRATCH/smartg/auxdata"
 
@@ -58,11 +61,12 @@ mkdir -p sbatch_reports "$ADJEFF_ARTICLE_CACHE" "$OUT"
 # job holds.
 for species in "${SPECIES[@]}"; do
     echo "=== group $GROUP, $species" >&2
-    # --frozen: take the environment as installed.  A compute node has no
-    # outbound network, so a `pixi run` that decides to install anything
-    # dies on a TLS error rather than running.  Run `pixi install` on the
-    # login node after every pull that touches `pixi.lock`.
-    pixi run --frozen --tls-no-verify -e default \
+    # --no-install takes the environment exactly as it sits on disk and
+    # --frozen skips the lock check.  A compute node has no outbound
+    # network, so any install step dies on a TLS error rather than
+    # running.  Run `pixi install` on the login node after every pull that
+    # touches `pixi.lock`.
+    pixi run --frozen --no-install --tls-no-verify -e default \
         python generate/sedoo/build_psf_lut.py \
         --species "$species" \
         --training "$TRAINING" \
