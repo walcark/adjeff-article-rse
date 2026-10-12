@@ -104,8 +104,9 @@ binary and its optical dataset, which reproducing the figures does not.
 
 The PSF lookup table of the deposit is 1296 fits per species, so it is
 built on a cluster rather than here:
-`generate/sedoo/build_psf_lut.slurm` submits one array task per species,
-pointing the cache and the cubes at the scratch.
+`generate/sedoo/build_psf_lut.slurm` is one GPU job that walks the eight
+species, pointing the cache and the cubes at the scratch. It times out
+before it finishes and carries on where it stopped when resubmitted.
 
 ### Compute a figure
 

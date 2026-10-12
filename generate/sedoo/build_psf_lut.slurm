@@ -1,20 +1,19 @@
 #!/bin/bash
-# Build the SEDOO lookup table on the CNES cluster, one job per species.
+# Build the SEDOO lookup table on the CNES cluster.
 #
 #   mkdir -p sbatch_reports          # once: sbatch resolves --output at submit
 #   sbatch generate/sedoo/build_psf_lut.slurm
-#   sbatch --array=7 generate/sedoo/build_psf_lut.slurm    # sulphate alone
 #
-# 1296 fits per species, so a job will be requeued or time out at least
-# once.  The script checkpoints slab by slab and skips what is already
-# filled, which only works if the cache and the cube outlive the job:
-# both go to the scratch, never to the quota'd $HOME, and never to /tmp.
+# 1296 fits per species, so the job will time out before the eight are
+# done.  The script checkpoints slab by slab and skips what is already
+# filled, so resubmitting it carries on, which only works if the cache
+# and the cubes outlive the job: both go to the scratch, never to the
+# quota'd $HOME, and never to /tmp.
 #
 #SBATCH --job-name=psf_lut
 #SBATCH --export=none
-#SBATCH --output=sbatch_reports/psf_lut-%A_%a.out
-#SBATCH --error=sbatch_reports/psf_lut-%A_%a.err
-#SBATCH --array=0-7
+#SBATCH --output=sbatch_reports/psf_lut-%j.out
+#SBATCH --error=sbatch_reports/psf_lut-%j.err
 #SBATCH -N 1
 #SBATCH --gres=gpu:1
 #SBATCH --partition=gpu_std
@@ -34,26 +33,23 @@ REPO=/work/scratch/env/walcark/adjeff-article-rse
 # reproduction of the deposit.
 TRAINING=gauss
 
-# One species per array task, in the order `SPECIES` declares them.
-SPECIES=(
-    ammonium
-    blackcar
-    dust
-    nitrate
-    organicm
-    seasalt
-    secondary_organic
-    sulphate
-)
-
 export PATH="$SCRATCH/pixi/bin:$PATH"
 export ADJEFF_ARTICLE_CACHE="$SCRATCH/adjeff-article/cache"
 export SMARTG_DIR_AUXDATA="$SCRATCH/smartg/auxdata"
 
-cd "$REPO"
-mkdir -p sbatch_reports "$ADJEFF_ARTICLE_CACHE" "$SCRATCH/adjeff-article/sedoo"
+OUT="$SCRATCH/adjeff-article/sedoo"
 
-pixi run --tls-no-verify -e default python generate/sedoo/build_psf_lut.py \
-    --species "${SPECIES[$SLURM_ARRAY_TASK_ID]}" \
-    --training "$TRAINING" \
-    --out "$SCRATCH/adjeff-article/sedoo"
+cd "$REPO"
+mkdir -p sbatch_reports "$ADJEFF_ARTICLE_CACHE" "$OUT"
+
+# One species after another, on the one GPU the job holds.  Comment a line
+# out to leave its cube as it stands; the script would skip it anyway once
+# it is full.
+for species in ammonium blackcar dust nitrate organicm seasalt \
+               secondary_organic sulphate; do
+    echo "=== $species" >&2
+    pixi run --tls-no-verify -e default python generate/sedoo/build_psf_lut.py \
+        --species "$species" \
+        --training "$TRAINING" \
+        --out "$OUT"
+done
