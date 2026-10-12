@@ -58,7 +58,12 @@ mkdir -p sbatch_reports "$ADJEFF_ARTICLE_CACHE" "$OUT"
 # job holds.
 for species in "${SPECIES[@]}"; do
     echo "=== group $GROUP, $species" >&2
-    pixi run --tls-no-verify -e default python generate/sedoo/build_psf_lut.py \
+    # --frozen: take the environment as installed.  A compute node has no
+    # outbound network, so a `pixi run` that decides to install anything
+    # dies on a TLS error rather than running.  Run `pixi install` on the
+    # login node after every pull that touches `pixi.lock`.
+    pixi run --frozen --tls-no-verify -e default \
+        python generate/sedoo/build_psf_lut.py \
         --species "$species" \
         --training "$TRAINING" \
         --out "$OUT"
