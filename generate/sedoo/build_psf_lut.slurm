@@ -76,11 +76,13 @@ set -u
 # wrong path makes Smart-G return NaN instead of raising, and the run dies
 # a hundred lines later complaining about non-finite transmittances.
 eval "$(python tools/smartg_env.py)"
-if [ ! -d "${SMARTG_DIR_AUXDATA:-}" ]; then
-    echo "SMARTG_DIR_AUXDATA='${SMARTG_DIR_AUXDATA:-}' is not a directory." >&2
-    echo "Run on the login node: pixi run download-auxdata" >&2
-    exit 1
-fi
+for needed in acs aerosols atmospheres; do
+    if [ ! -d "${SMARTG_DIR_AUXDATA:-}/$needed" ]; then
+        echo "missing '$needed' under SMARTG_DIR_AUXDATA='${SMARTG_DIR_AUXDATA:-}'." >&2
+        echo "Run on the login node: pixi run download-auxdata" >&2
+        exit 1
+    fi
+done
 
 # The two species of the group, one after the other, on the one GPU the
 # job holds.
