@@ -66,7 +66,11 @@ if [ ! -f .pixi-activate.sh ]; then
     echo "  pixi install && pixi shell-hook -e default > .pixi-activate.sh" >&2
     exit 1
 fi
+# `set -u` off around it: the conda activation scripts the environment
+# ships read unset variables of their own, and MKL's dies on it.
+set +u
 source .pixi-activate.sh
+set -u
 
 # The two species of the group, one after the other, on the one GPU the
 # job holds.
