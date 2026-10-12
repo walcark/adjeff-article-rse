@@ -29,3 +29,6 @@ __pycache__/
 credentials.toml
 *credentials*.toml
 .netrc
+
+# the pixi activation script, regenerated per machine
+.pixi-activate.sh

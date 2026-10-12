@@ -46,9 +46,6 @@ REPO=/work/scratch/env/walcark/adjeff-article-rse
 TRAINING=gauss
 
 export PATH="$SCRATCH/pixi/bin:$PATH"
-# $HOME is on NFS and the compute node reads it badly, which is what sends
-# pixi back to the network.  Keep its cache on the scratch with the rest.
-export PIXI_CACHE_DIR="$SCRATCH/pixi/cache"
 export ADJEFF_ARTICLE_CACHE="$SCRATCH/adjeff-article/cache"
 export SMARTG_DIR_AUXDATA="$SCRATCH/smartg/auxdata"
 
@@ -57,17 +54,25 @@ OUT="$SCRATCH/adjeff-article/sedoo"
 cd "$REPO"
 mkdir -p sbatch_reports "$ADJEFF_ARTICLE_CACHE" "$OUT"
 
+# pixi is not called at run time: `pixi run` reaches for the network to
+# check the environment, and a compute node has none.  The activation
+# script sets the same PATH without pixi, which pixi itself recommends.
+# Regenerate it on the login node after every pull that touches the lock:
+#
+#     pixi install && pixi shell-hook -e default > .pixi-activate.sh
+#
+if [ ! -f .pixi-activate.sh ]; then
+    echo "missing .pixi-activate.sh, run on the login node:" >&2
+    echo "  pixi install && pixi shell-hook -e default > .pixi-activate.sh" >&2
+    exit 1
+fi
+source .pixi-activate.sh
+
 # The two species of the group, one after the other, on the one GPU the
 # job holds.
 for species in "${SPECIES[@]}"; do
     echo "=== group $GROUP, $species" >&2
-    # --no-install takes the environment exactly as it sits on disk and
-    # --frozen skips the lock check.  A compute node has no outbound
-    # network, so any install step dies on a TLS error rather than
-    # running.  Run `pixi install` on the login node after every pull that
-    # touches `pixi.lock`.
-    pixi run --frozen --no-install --tls-no-verify -e default \
-        python generate/sedoo/build_psf_lut.py \
+    python generate/sedoo/build_psf_lut.py \
         --species "$species" \
         --training "$TRAINING" \
         --out "$OUT"
