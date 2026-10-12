@@ -47,7 +47,6 @@ TRAINING=gauss
 
 export PATH="$SCRATCH/pixi/bin:$PATH"
 export ADJEFF_ARTICLE_CACHE="$SCRATCH/adjeff-article/cache"
-export SMARTG_DIR_AUXDATA="$SCRATCH/smartg/auxdata"
 
 OUT="$SCRATCH/adjeff-article/sedoo"
 
@@ -71,6 +70,17 @@ fi
 set +u
 source .pixi-activate.sh
 set -u
+
+# The repository computes its own auxiliary data path, `inputs/smartg_auxdata`,
+# which `pixi run download-auxdata` fills.  Checked rather than assumed: a
+# wrong path makes Smart-G return NaN instead of raising, and the run dies
+# a hundred lines later complaining about non-finite transmittances.
+eval "$(python tools/smartg_env.py)"
+if [ ! -d "${SMARTG_DIR_AUXDATA:-}" ]; then
+    echo "SMARTG_DIR_AUXDATA='${SMARTG_DIR_AUXDATA:-}' is not a directory." >&2
+    echo "Run on the login node: pixi run download-auxdata" >&2
+    exit 1
+fi
 
 # The two species of the group, one after the other, on the one GPU the
 # job holds.
