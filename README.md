@@ -1,22 +1,100 @@
-# Adjeff — Remote Sensing of Environment (RSE) companion scripts
+# adjeff, companion scripts
 
-Companion repository for **Article 1**: *[title to be added]*.
+Companion repository for:
 
-Contains the scripts that reproduce every figure in the paper, and the associated datasets. 
+> K. Walcarius, M. Moulana, D. Ramon, M. Lassalle, J. Colin and O. Hagolle,
+> *A Revised Model for Atmospheric Adjacency Effect Correction in Optical
+> Satellite Earth Observation Images*, Remote Sensing of Environment,
+> submitted.
+
+Every figure of the article is recomputed here, from the Monte-Carlo
+radiative transfer up to the fitted point spread functions, through
+[adjeff](https://github.com/walcark/Adjeff) 1.0.0 and
+[Smart-G](https://github.com/hygeos/smartg) 2.0. The datasets deposited on
+the SEDOO portal are built here too.
 
 ---
 
-## Repository structure and guidelines
+## Reproduce a figure
 
-The structure of the repository is organized as follow.
+A CUDA GPU is required: every figure runs Smart-G. `install_env` brings
+its own pixi and installs the environment, so nothing else is needed.
 
-Three directories carry the whole layout, and the name of each says what
-is in it: `generate/` produces, `inputs/` is needed, `results/` is
-produced.
+```bash
+git clone https://github.com/walcark/adjeff-article-rse.git
+cd adjeff-article-rse
+
+chmod +x install_env makefig
+./install_env                 # installs pixi into ~/.pixi, then the environment
+pixi run download-auxdata     # the Smart-G auxiliary dataset
+
+./makefig figure7             # one figure
+./makefig                     # all of them, successively, which is long
+```
+
+Figures land in `results/figures/`, tables in `results/tables/`.
+
+### What each target draws
+
+| `./makefig` | What it shows | Script |
+|---|---|---|
+| `figure2` | loss landscape of the generalised Gaussian PSF, four training sets | `figures/figure2.py` |
+| `figure3` | radial RMSE against encircled-energy radius | `figures/figure3.py` |
+| `figure4` | surface reflectance, generalised Gaussian PSF against Gauss-330 | `figures/figure4.py` |
+| `figure5` | the same, with the King PSF | `figures/figure5.py` |
+| `figure7` to `figure10` | PSF against aerosol optical thickness: black carbon, sulphate, sulphate at 95 % humidity, sea salt | `figures/figure7_17.py` |
+| `figure11` to `figure13` | PSF against wavelength, one species each | `figures/figure7_17.py` |
+| `figure14` | PSF against the aerosol scale height | `figures/figure7_17.py` |
+| `figure15` | PSF against the ground elevation | `figures/figure7_17.py` |
+| `figure16` | PSF against the viewing zenith angle | `figures/figure7_17.py` |
+| `figure17` | PSF against the solar zenith angle | `figures/figure7_17.py` |
+| `figures22-23` | King PSF on real Sentinel-2 data, scatter and RMSE gain | `figures/figures22-23.py` |
+| `table_aot_sensitivity` | what a 0.2 error on the AOT costs, per band, answering a reviewer | `reviews/table_aot_sensitivity.py` |
+
+**The target names are the manuscript's file names, which run ahead of the
+printed figure numbers**, and two of them need a shift of their own. The
+header of `makefig` says which, and is the reference.
+
+One more target is not a figure of the article: `elevation_low_aot`
+supports the statement of section 3.2.2 that the elevation dependency
+grows as the AOT drops below 0.1.
+
+---
+
+## What the repository needs
+
+`pixi run download-auxdata` fetches the Smart-G auxiliary dataset the way
+[the Smart-G page](https://github.com/hygeos/smartg) describes. It also
+copies two things that dataset does not carry. Four input sets are
+versioned here, so reproducing the figures needs no further download:
+
+| | |
+|---|---|
+| `inputs/afgl/` | the simplified exponential AFGL profile |
+| `inputs/cams/` | optical properties of the eight CAMS aerosol species |
+| `inputs/modis/` | the MODIS skylight table and BRDF weights |
+| `inputs/gloria/` | pre-processed GLORIA matchups |
+
+The CAMS tables were produced with MOPSMAP, through
+[pymopsmap](https://github.com/walcark/pymopsmap).
+`generate/sedoo/build_cams_auxdata.py` produced them and documents the grid
+they are tabulated on; running it needs the MOPSMAP binary and its optical
+dataset, which reproducing the figures does not.
+
+The Smart-G cache sits outside the repository, under
+`~/.cache/adjeff-article/`: it runs to gigabytes, it is reproducible, and a
+lookup table takes long enough that it has to survive a reboot.
+
+---
+
+## How it is laid out
+
+Three directories carry the layout, and the name of each says what is in
+it: `generate/` produces, `inputs/` is needed, `results/` is produced.
 
 ```
 generate/            everything that produces something
-├── figures/         figure2.py ... figures22-23.py, the article's figures
+├── figures/         the article's figures
 ├── reviews/         analyses supporting the responses to the reviewers
 ├── sedoo/           the datasets deposited on the SEDOO portal
 └── smoke.py         checks every script above still runs
@@ -43,167 +121,20 @@ makefig                 builds one figure or all of them
 install_env             installs pixi and the environment
 ```
 
-The Smart-G cache is deliberately outside the repository, under
-`~/.cache/adjeff-article/`: it runs to gigabytes, it is reproducible, and
-a lookup table takes long enough that it has to survive a reboot.
-`ADJEFF_ARTICLE_CACHE` moves it, which is what a cluster needs, where the
-quota is on `$HOME` and the room is on the scratch. Every script also
-takes `--cache-dir` for one run alone.
-
-The ``pyproject.toml`` is used by pixi (or any environment manager you may want to use) in order to install the dependencies required to compute the figures. If you wish to keep it simple, simply launch the ``install_env`` script that will locally install ``pixi`` on your system and automatically install the dependencies.
-
-The ``makefig`` helps to easily compute any figure on the terminal. Keep in mind that depending on your GPU capacities, some figures may take some time to fully compute.
+`pyproject.toml` is what pixi reads, and any other environment manager can
+read it too. `pixi install -e local` builds adjeff from a sibling checkout
+of `../Adjeff` rather than from PyPI, which is how a change is tried before
+it is released.
 
 ---
 
-## Installation
+## Going further
 
-### Prerequisites
-
-- [pixi](https://pixi.sh) ≥ 0.40
-- A CUDA 12.6-compatible GPU and driver
-
-### Clone the project, add pixi and launch an environment
-
-```bash
-# Clone the repository
-git clone https://github.com/walcark/adjeff-article-1.git
-cd adjeff-article-1
-
-# Install pixi (to ~/.pixi by default)
-chmod +x install_env
-./install_env
-
-# Or specify a custom installation directory
-./install_env /custom/path
-
-# GPU environment (required for all figures)
-pixi install -e gpu
-```
-
-### Download Smart-G auxiliary data
-
-Smart-G auxiliary data is downloaded the way the Smart-G GitHub page
-describes (https://github.com/hygeos/smartg), with:
-
-```bash
-pixi run download-auxdata
-```
-
-That step also copies two things the standard Smart-G dataset does not
-carry: the simplified exponential AFGL profile of `inputs/afgl`, and
-the optical properties of the eight CAMS aerosol species of
-`inputs/cams`. Both are versioned here, so reproducing the
-figures needs no extra download.
-
-The CAMS tables were produced with MOPSMAP, through
-[pymopsmap](https://github.com/walcark/pymopsmap).
-`generate/sedoo/build_cams_auxdata.py` is the script that produced them and
-documents the grid they are tabulated on; running it needs the MOPSMAP
-binary and its optical dataset, which reproducing the figures does not.
-
-The PSF lookup table of the deposit is 1296 fits per species, so it is
-built on a cluster rather than here:
-`generate/sedoo/build_psf_lut.slurm` is one GPU job for two species,
-taking the group number between 1 and 4 as its argument, and pointing the
-cache and the cubes at the scratch. A group that runs out of time carries
-on where it stopped when resubmitted.
-
-### Compute a figure
-
-The ``makefig`` shell file allows to simply call each ``generate/figures/figureX.py`` file, using the following command:
-
-```bash
-chmod +x makefig
-
-./makefig figure2      # to compute the second figure
-./makefig figureX      # to compute the Xth figure
-./makefig              # to compute all the figures successively (quite long)
-```
-
-Output files are written to `results/figures/`.
-
-### Logging
-
-adjeff prints nothing until asked, so the figure scripts ask on
-your behalf. Every one of them takes:
-
-```bash
-./makefig figure4                                   # info, the default
-python generate/figures/figure4.py --log-level debug         # + cache, atmospheres
-python generate/figures/figure4.py --log-level warning       # only what went sideways
-python generate/figures/figure4.py --log-json                # one JSON object per line
-```
-
-At `info` you get, for each module, what it is about to run and what it
-cost: `sweep.plan` before the Smart-G call and `module.done` with its
-duration after, plus `xsweep`'s own point counts and elapsed times. `zarr`
-and the other libraries are capped at `warning`.
-
-### Earthdata credentials, for `hotspot`
-
-The MODIS BRDF products the hotspot study uses are served from hosts that
-ask who you are. Nothing of the sort belongs in this repository, so the
-credentials are read from outside it, in this order:
-
-1. `--earthdata-user` and `--earthdata-password`, or `--earthdata-token`;
-2. `EARTHDATA_TOKEN`, or `EARTHDATA_USERNAME` and `EARTHDATA_PASSWORD`;
-3. a TOML file, `~/.config/adjeff-article/credentials.toml` by default,
-   moved with `--credentials` or `$ADJEFF_ARTICLE_CREDENTIALS`;
-4. `~/.netrc`, which is what NASA's own documentation asks you to write.
-
-The file:
-
-```toml
-[earthdata]
-username = "your-login"
-password = "your-password"
-# or, instead of both, a token you can revoke without changing the account:
-# token = "…"
-```
-
-```bash
-mkdir -p ~/.config/adjeff-article
-$EDITOR ~/.config/adjeff-article/credentials.toml
-chmod 600 ~/.config/adjeff-article/credentials.toml
-```
-
-The last step is checked rather than assumed: a file created with the
-default umask is world-readable, and the loader says so. It logs which
-source it used and the username, never the secret.
-
-#### Where the BRDF coefficients come from
-
-Two services carry MCD43A1, and `hotspot` takes `--brdf-source`:
-
-| | account | speed | state |
-| --- | --- | --- | --- |
-| `ornl` | none | seconds | catalogue currently down |
-| `appeears` | Earthdata | ~6 min per fetch | working |
-| `auto` *(default)* | — | — | tries ORNL, falls back to AppEEARS |
-
-The ORNL TESViS service answers `500` to every request touching its
-catalogue: `/products`, `/sites` and `/{product}/bands` all fail, while
-`/networks`, whose answer is a static list, succeeds. The failure is in
-their database layer, and **no account gets past it** — a 500 is an
-outage, not a refusal, and the error message says so.
-
-AppEEARS is LP DAAC's point-sampling service for the same granules. It
-submits a task and collects it once it has run, so a fetch takes minutes
-rather than seconds, and it only happens once: the result is cached to
-`--sites-csv`. Later runs read the CSV and never touch either service.
-
-```bash
-python figures/hotspot.py                          # ORNL, then AppEEARS
-python figures/hotspot.py --brdf-source appeears   # skip the ORNL attempt
-python figures/hotspot.py --refresh-sites          # refetch, ignoring the CSV
-```
-
-Any CSV carrying `site`, `f_iso`, `f_geo` and `f_vol` is accepted, so an
-Earth Engine export or a local granule read feeds the study just as well.
-
----
+[docs/MAINTAINING.md](docs/MAINTAINING.md) covers what reproducing a figure
+does not need: the log levels, the Earthdata credentials the hotspot study
+asks for, where the MODIS BRDF coefficients come from, moving the cache,
+and building the SEDOO lookup table on a cluster.
 
 ## License
 
-Apache License 2.0 — see [LICENSE](LICENSE).
+Apache License 2.0, see [LICENSE](LICENSE).

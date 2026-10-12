@@ -10,7 +10,7 @@ set -euo pipefail
 PIXI_HOME="${1:-${PIXI_HOME:-$HOME/.pixi}}"
 
 if ! command -v pixi &>/dev/null; then
-    echo "pixi not found — installing to $PIXI_HOME ..."
+    echo "pixi not found, installing to $PIXI_HOME ..."
     curl -fsSL https://pixi.sh/install.sh | PIXI_HOME="$PIXI_HOME" bash
     export PATH="$PIXI_HOME/bin:$PATH"
     echo ""
