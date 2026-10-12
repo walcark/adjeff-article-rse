@@ -54,7 +54,6 @@ from adjeff.api import (
 from adjeff.core import (
     ImageDict,
     KingPSF,
-    S2Band,
     SensorBand,
     disk_image_dict,
     gaussian_image_dict,
@@ -65,7 +64,7 @@ from adjeff.optim import Loss, Metric, TrainingImages, fit
 from adjeff.utils import CacheStore
 
 from adjeff_article_1.correction import correct
-from adjeff_article_1.runconfig import RunConfig, parse_run
+from adjeff_article_1.runconfig import RunConfig, band_from_wl, parse_run
 
 RES_KM = 0.05
 N = 3999
@@ -199,7 +198,7 @@ def run_band(
     cache: CacheStore,
 ) -> list[dict[str, float]]:
     """Simulate, optimise and evaluate every AOT case for one wavelength."""
-    band = S2Band.from_wl(wl)
+    band = band_from_wl(wl)
     aots = [
         args.aot_ref - args.aot_delta,
         args.aot_ref,

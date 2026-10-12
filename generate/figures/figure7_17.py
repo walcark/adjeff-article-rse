@@ -24,11 +24,11 @@ import numpy as np
 import xarray as xr
 from adjeff.analysis import encircled_energy
 from adjeff.api import make_full_config, make_model
-from adjeff.core import ImageDict, KingPSF, S2Band, SensorBand, psf_kernel
+from adjeff.core import ImageDict, KingPSF, SensorBand, psf_kernel
 from adjeff.modules.models import Unif2Surface
 from adjeff.optim import Loss, Metric, TrainingImages, fit
 
-from adjeff_article_1.runconfig import RunConfig, parse_run
+from adjeff_article_1.runconfig import RunConfig, band_from_wl, parse_run
 from adjeff_article_1.scenes import disk_scenes, mixed_scenes
 from adjeff_article_1.style import (
     font,
@@ -140,7 +140,7 @@ def run_one(
     def at(name: str) -> float:
         return value if sweep_var == name else getattr(args, name)[0]
 
-    band = S2Band.from_wl(at("wl"))
+    band = band_from_wl(at("wl"))
     cfg = make_full_config(
         bands=[band],
         aot=[at("aot")],

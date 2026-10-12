@@ -33,7 +33,7 @@ import numpy as np
 import pandas as pd
 
 from adjeff.atmosphere import AtmoConfig, GeoConfig, SpectralConfig
-from adjeff.core import ImageDict, S2Band, SensorBand
+from adjeff.core import ImageDict, SensorBand
 from adjeff.modules.samplers import (
     SphAlbBrdfSampler,
     SphAlbSampler,
@@ -46,7 +46,7 @@ from adjeff.modules.samplers import (
 from adjeff.utils import CacheStore
 
 from adjeff_article_1.rossli import shape_of
-from adjeff_article_1.runconfig import REPO_ROOT
+from adjeff_article_1.runconfig import REPO_ROOT, band_from_wl
 from adjeff_article_1.style import font, style_axes, use_article_style
 from hotspot import CHOSEN
 from hotspot_brdf import LABELS, ORDER, load
@@ -154,7 +154,7 @@ def _flat(array) -> np.ndarray:
 
 def collect(args: argparse.Namespace, frame: pd.DataFrame) -> pd.DataFrame:
     """Run every ``(sza, surface)`` pair and return one tidy table."""
-    band = S2Band.from_wl(args.wl)
+    band = band_from_wl(args.wl)
     aot = np.linspace(args.aot_min, args.aot_max, args.n_aot)
     cache = CacheStore(args.cache_dir)
     rows: list[dict] = []

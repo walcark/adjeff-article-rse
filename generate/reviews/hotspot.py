@@ -71,7 +71,12 @@ from adjeff_article_1.rossli import (
     negative_flux,
     shape_of,
 )
-from adjeff_article_1.runconfig import REPO_ROOT, RunConfig, parse_run
+from adjeff_article_1.runconfig import (
+    REPO_ROOT,
+    RunConfig,
+    band_from_wl,
+    parse_run,
+)
 from adjeff_article_1.skylight import MODIS_BANDS, blue_sky, skylight_fraction
 
 from adjeff.analysis import rmse
@@ -79,7 +84,6 @@ from adjeff.api import make_full_config, make_model, run_forward_pipeline
 from adjeff.core import (
     ImageDict,
     KingPSF,
-    S2Band,
     SensorBand,
     disk_image_dict,
     gaussian_image_dict,
@@ -752,7 +756,7 @@ def main() -> None:
     # Named per geometry: the anisotropy on show depends on it, 0.03
     # from Lambertian at a sun zenith of 40 degrees against 0.19 at 10.
     suffix = f"_sza{args.sza:g}" + ("_clamped" if args.clamp else "")
-    band = S2Band.from_wl(args.wl)
+    band = band_from_wl(args.wl)
     frame = selected_surfaces(args)
     write_coefficients(frame, OUTPUT / f"hotspot_coefficients{suffix}.csv")
 

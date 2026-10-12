@@ -17,11 +17,18 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 
 import adjeff
+from adjeff.core import S2Band
 
 from . import _logging as article_logging
 from .utils import get_cache_path, get_results_path
 
-__all__ = ["ARTICLE_ATMOSPHERE", "RunConfig", "add_run_arguments", "parse_run"]
+__all__ = [
+    "ARTICLE_ATMOSPHERE",
+    "RunConfig",
+    "add_run_arguments",
+    "band_from_wl",
+    "parse_run",
+]
 
 # Reference atmosphere and geometry of the manuscript.  Every figure that
 # does not sweep these values uses exactly this state.
@@ -43,6 +50,25 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 _REPO_ROOT = REPO_ROOT
 _RESULTS = get_results_path()
 _CACHE = get_cache_path()
+
+
+def band_from_wl(wl_nm: float, tol_nm: float = 0.5) -> S2Band:
+    """Return the Sentinel-2 band centred within *tol_nm* of *wl_nm*.
+
+    The scripts take a wavelength on the command line or from a config
+    entry, and `SensorBand.from_wl` did this lookup until adjeff 1.0.0
+    dropped it.
+
+    Raises
+    ------
+    KeyError
+        If no band lies within *tol_nm*, listing the centres that exist.
+    """
+    for band in S2Band:
+        if abs(band.wl_nm - float(wl_nm)) <= tol_nm:
+            return band
+    centres = ", ".join(f"{b.wl_nm:.0f}" for b in S2Band)
+    raise KeyError(f"No S2Band within {tol_nm} nm of {wl_nm} nm. Centres: {centres}.")
 
 
 @dataclass(frozen=True)
