@@ -47,6 +47,7 @@ from adjeff.utils import CacheStore
 
 from adjeff_article_1.rossli import shape_of
 from adjeff_article_1.runconfig import REPO_ROOT, band_from_wl
+from adjeff_article_1.utils import get_cache_path
 from adjeff_article_1.style import font, style_axes, use_article_style
 from hotspot import CHOSEN
 from hotspot_brdf import LABELS, ORDER, load
@@ -305,7 +306,11 @@ def main() -> None:
     )
     parser.add_argument("--sites-csv", type=Path,
                         default=OUTPUT / "hotspot_mcd43a1_sites.csv")
-    parser.add_argument("--cache-dir", type=str, default=str(OUTPUT / "cache_review"))
+    # Outside the repository: a Smart-G cache is reproducible and runs to
+    # gigabytes, so it has no business under version control.
+    parser.add_argument(
+        "--cache-dir", type=str, default=str(get_cache_path() / "review")
+    )
     parser.add_argument(
         "--out", type=Path, default=None,
         help="PNG path; defaults to results/tables/radiative_brdf_<clamp>.png",

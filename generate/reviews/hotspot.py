@@ -78,6 +78,7 @@ from adjeff_article_1.runconfig import (
     parse_run,
 )
 from adjeff_article_1.skylight import MODIS_BANDS, blue_sky, skylight_fraction
+from adjeff_article_1.utils import get_cache_path
 
 from adjeff.analysis import rmse
 from adjeff.api import make_full_config, make_model, run_forward_pipeline
@@ -740,7 +741,9 @@ def check_clamp_agrees(requested: bool) -> None:
 def main() -> None:
     """Measure what the Lambertian assumption costs on three surfaces."""
     run, args = parse_run(__doc__.splitlines()[0], build_parser())
-    run = run.resolve(n=1999, res_km=0.10, cache_dir="/tmp/adjeff-hotspot")
+    run = run.resolve(
+        n=1999, res_km=0.10, cache_dir=str(get_cache_path() / "hotspot")
+    )
     if run.smoke:
         args.scales = [1.0, 5.0]
         args.nr = 20

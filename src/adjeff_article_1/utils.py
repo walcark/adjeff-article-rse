@@ -5,6 +5,7 @@ what the repository needs and does not produce, `results/` what it
 produces, and the cache lives outside the tree entirely.
 """
 
+import os
 from pathlib import Path
 
 
@@ -31,8 +32,13 @@ def get_cache_path() -> Path:
     A Smart-G cache runs to gigabytes and is reproducible, so it has no
     business under version control or in a directory anyone might
     archive.  Not ``/tmp`` either: a lookup table takes long enough that
-    it has to survive a reboot.
+    it has to survive a reboot.  ``ADJEFF_ARTICLE_CACHE`` moves it, which
+    is what a cluster needs, where the quota is on ``$HOME`` and the room
+    is on the scratch.
     """
+    override = os.environ.get("ADJEFF_ARTICLE_CACHE")
+    if override:
+        return Path(override)
     return Path.home() / ".cache" / "adjeff-article"
 
 

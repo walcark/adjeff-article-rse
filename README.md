@@ -46,6 +46,9 @@ install_env             installs pixi and the environment
 The Smart-G cache is deliberately outside the repository, under
 `~/.cache/adjeff-article/`: it runs to gigabytes, it is reproducible, and
 a lookup table takes long enough that it has to survive a reboot.
+`ADJEFF_ARTICLE_CACHE` moves it, which is what a cluster needs, where the
+quota is on `$HOME` and the room is on the scratch. Every script also
+takes `--cache-dir` for one run alone.
 
 The ``pyproject.toml`` is used by pixi (or any environment manager you may want to use) in order to install the dependencies required to compute the figures. If you wish to keep it simple, simply launch the ``install_env`` script that will locally install ``pixi`` on your system and automatically install the dependencies.
 
@@ -99,9 +102,14 @@ The CAMS tables were produced with MOPSMAP, through
 documents the grid they are tabulated on; running it needs the MOPSMAP
 binary and its optical dataset, which reproducing the figures does not.
 
+The PSF lookup table of the deposit is 1296 fits per species, so it is
+built on a cluster rather than here:
+`generate/sedoo/build_psf_lut.slurm` submits one array task per species,
+pointing the cache and the cubes at the scratch.
+
 ### Compute a figure
 
-The ``makefig`` shell file allows to simply call each ``figures/figureX.py`` file, using the following command:
+The ``makefig`` shell file allows to simply call each ``generate/figures/figureX.py`` file, using the following command:
 
 ```bash
 chmod +x makefig
@@ -115,14 +123,14 @@ Output files are written to `results/figures/`.
 
 ### Logging
 
-adjeff 0.15.0 prints nothing until asked, so the figure scripts ask on
+adjeff prints nothing until asked, so the figure scripts ask on
 your behalf. Every one of them takes:
 
 ```bash
 ./makefig figure4                                   # info, the default
-python figures/figure4.py --log-level debug         # + cache, atmospheres
-python figures/figure4.py --log-level warning       # only what went sideways
-python figures/figure4.py --log-json                # one JSON object per line
+python generate/figures/figure4.py --log-level debug         # + cache, atmospheres
+python generate/figures/figure4.py --log-level warning       # only what went sideways
+python generate/figures/figure4.py --log-json                # one JSON object per line
 ```
 
 At `info` you get, for each module, what it is about to run and what it
