@@ -2,11 +2,13 @@
 # Build the SEDOO lookup table on the CNES cluster.
 #
 #   mkdir -p sbatch_reports          # once: sbatch resolves --output at submit
-#   sbatch generate/sedoo/build_psf_lut.slurm
+#   for g in 1 2 3 4; do sbatch generate/sedoo/build_psf_lut.slurm $g; done
 #
-# 1296 fits per species, so the job will time out before the eight are
-# done.  The script checkpoints slab by slab and skips what is already
-# filled, so resubmitting it carries on, which only works if the cache
+# 1296 fits per species, so the eight do not fit in one job.  They are
+# split into four groups of two, one job and one GPU each, taking the
+# group number as its only argument.  A group that runs out of time
+# checkpoints slab by slab and skips what is already filled, so
+# resubmitting the same group carries on.  That only works if the cache
 # and the cubes outlive the job: both go to the scratch, never to the
 # quota'd $HOME, and never to /tmp.
 #
@@ -25,6 +27,16 @@
 
 set -euo pipefail
 
+GROUP=${1:?usage: sbatch generate/sedoo/build_psf_lut.slurm <1-4>}
+
+case "$GROUP" in
+    1) SPECIES=(ammonium blackcar) ;;
+    2) SPECIES=(dust nitrate) ;;
+    3) SPECIES=(organicm seasalt) ;;
+    4) SPECIES=(secondary_organic sulphate) ;;
+    *) echo "group must be 1, 2, 3 or 4, got '$GROUP'" >&2; exit 2 ;;
+esac
+
 SCRATCH=/work/scratch/data/walcark
 REPO=/work/scratch/env/walcark/adjeff-article-rse
 
@@ -42,12 +54,10 @@ OUT="$SCRATCH/adjeff-article/sedoo"
 cd "$REPO"
 mkdir -p sbatch_reports "$ADJEFF_ARTICLE_CACHE" "$OUT"
 
-# One species after another, on the one GPU the job holds.  Comment a line
-# out to leave its cube as it stands; the script would skip it anyway once
-# it is full.
-for species in ammonium blackcar dust nitrate organicm seasalt \
-               secondary_organic sulphate; do
-    echo "=== $species" >&2
+# The two species of the group, one after the other, on the one GPU the
+# job holds.
+for species in "${SPECIES[@]}"; do
+    echo "=== group $GROUP, $species" >&2
     pixi run --tls-no-verify -e default python generate/sedoo/build_psf_lut.py \
         --species "$species" \
         --training "$TRAINING" \
