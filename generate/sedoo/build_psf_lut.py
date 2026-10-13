@@ -221,15 +221,8 @@ def fit_slab(
 ) -> dict[str, np.ndarray]:
     """Optimise one King PSF per ``(h, rh, aot)``, at a fixed band and href.
 
-    `RhoToaSymSampler` declares ``loop(sza, vza) vec(aot, rh, h, href)``, so
-    every atmospheric state of the slab travels in one Smart-G call: 54
-    states here against the 9 of an AOT-only slab, which is 24 launches for
-    the whole cube rather than 144.
-
-    ``href`` stays out of the sweep on purpose.  A state weighs 128 MB at
-    ``n = 3999``, and the peak is one batch of them inside the point
-    function, the sweep itself being written through to zarr and read back
-    lazily.  Hence `BATCH_SIZE`, well under the 64 adjeff defaults to.
+    The states of the slab travel in one Smart-G call, `RhoToaSymSampler`
+    declaring ``loop(sza, vza) vec(aot, rh, h, href)``.
 
     Parameters
     ----------
