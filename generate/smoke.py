@@ -42,7 +42,7 @@ def child_env() -> dict[str, str]:
     Importing adjeff pulls in Smart-G, which raises at import time when
     ``SMARTG_DIR_AUXDATA`` is unset.  Filling it in here means the runner
     behaves the same whether or not the caller sourced
-    ``tools/smartg_env.py`` first.
+    the dataset of ``inputs/`` first.
     """
     env = dict(os.environ)
     env.setdefault("SMARTG_DIR_AUXDATA", str(get_auxdata_path()))

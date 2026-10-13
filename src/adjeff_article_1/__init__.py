@@ -15,7 +15,7 @@ Everything they share lives in the submodules below:
 - :mod:`.utils` the three roots: ``inputs/`` for what the repository
   needs, ``results/`` for what it produces, and a cache outside the tree.
 
-Only the environment bootstrap is re-exported here.  ``tools/smartg_env.py``
+Only the environment bootstrap is re-exported here.  The scripts
 imports this package to locate the Smart-G auxiliary data, which happens
 *before* ``SMARTG_DIR_AUXDATA`` is set, so importing anything that reaches
 ``adjeff`` (and therefore ``smartg``) from this module would make the

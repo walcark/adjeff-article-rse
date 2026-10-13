@@ -55,7 +55,7 @@ set +u
 source .pixi-activate.sh
 set -u
 
-eval "$(python tools/smartg_env.py)"
+export SMARTG_DIR_AUXDATA="$REPO/inputs/smartg_auxdata"
 for needed in acs aerosols atmospheres; do
     if [ ! -d "${SMARTG_DIR_AUXDATA:-}/$needed" ]; then
         echo "missing '$needed' under SMARTG_DIR_AUXDATA='${SMARTG_DIR_AUXDATA:-}'." >&2

@@ -112,9 +112,8 @@ results/             everything produced, ignored by git
 ├── sedoo/           what gets deposited
 └── smoke/           the smoke run's own output
 
-tools/               neither produced nor required: the environment
-├── clamp_brdf.py    turns Smart-G's Ross-Li clamp on and off
-└── smartg_env.py    prints the `export SMARTG_DIR_AUXDATA=` line
+tools/               neither produced nor required
+└── clamp_brdf.py    turns Smart-G's Ross-Li clamp on and off
 
 src/adjeff_article_1/   the library every script under generate/ imports
 makefig                 builds one figure or all of them

@@ -25,14 +25,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FIGS="$REPO_ROOT/generate"
 
-# Export Smart-G auxiliary data environment variable
-eval "$(python tools/smartg_env.py)"
-
-# Test that the environment variable is successfully exported
-if [ -z "${SMARTG_DIR_AUXDATA:-}" ]; then
-    echo "Error: SMARTG_DIR_AUXDATA is not set." >&2
-    exit 1
-fi
+export SMARTG_DIR_AUXDATA="$REPO_ROOT/inputs/smartg_auxdata"
 
 mkdir -p "$REPO_ROOT/results/figures" "$REPO_ROOT/results/tables"
 
