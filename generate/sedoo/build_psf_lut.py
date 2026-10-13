@@ -316,6 +316,7 @@ def build(
     training: str,
     out: Path,
     dry_run: bool = False,
+    limit: int | None = None,
 ) -> Path:
     """Fill one species' cube, slab by slab, resuming where it stopped.
 
@@ -333,6 +334,8 @@ def build(
         Directory to write into.
     dry_run : bool
         Report what remains and fit nothing.
+    limit : int or None
+        Stop after that many slabs.
 
     Returns
     -------
@@ -342,7 +345,7 @@ def build(
     path = out / f"king_psf_{sensor}_{species}.nc"
     cube = load_or_create(path, sensor, species, training)
 
-    slabs = [
+    candidates = [
         {
             "band": float(band.wl_nm),
             "href": href,
@@ -351,9 +354,11 @@ def build(
         }
         for (band, href) in itertools.product(SENSORS[sensor], HREF)
     ]
-    todo = [w for w in slabs if not slab_done(cube, w)]
+    todo = [w for w in candidates if not slab_done(cube, w)]
+    if limit is not None:
+        todo = todo[:limit]
     print(
-        f"{species}: {len(todo)} of {len(slabs)} slabs left, "
+        f"{species}: {len(todo)} of {len(candidates)} slabs left, "
         f"{len(todo) * len(H) * len(RH) * len(AOT)} fits",
         flush=True,
     )
@@ -408,6 +413,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="directory to write the cubes into",
     )
     parser.add_argument(
+        "--slabs",
+        type=int,
+        default=None,
+        help="stop after that many slabs",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="report how many fits remain and do none of them",
@@ -432,7 +443,7 @@ def main() -> None:
             path.unlink()
         build(
             args.sensor, species, run, args.training, args.out,
-            dry_run=args.dry_run,
+            dry_run=args.dry_run, limit=args.slabs,
         )
 
 
