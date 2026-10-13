@@ -9,7 +9,7 @@ Companion repository for:
 
 Every figure of the article is recomputed here, from the Monte-Carlo
 radiative transfer up to the fitted point spread functions, through
-[adjeff](https://github.com/walcark/Adjeff) 1.0.0 and
+[adjeff](https://github.com/walcark/Adjeff) 1.1.0 and
 [Smart-G](https://github.com/hygeos/smartg) 2.0. The datasets deposited on
 the SEDOO portal are built here too.
 
