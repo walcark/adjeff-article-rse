@@ -2,6 +2,7 @@
 # Build the SEDOO lookup table on the CNES cluster.
 #
 #   mkdir -p sbatch_reports          # once: sbatch resolves --output at submit
+#   sbatch generate/sedoo/build_psf_lut.slurm 1 1      # one slab, to time it
 #   for g in 1 2 3 4; do sbatch generate/sedoo/build_psf_lut.slurm $g; done
 #
 #SBATCH --job-name=psf_lut
@@ -19,7 +20,8 @@
 
 set -euo pipefail
 
-GROUP=${1:?usage: sbatch generate/sedoo/build_psf_lut.slurm <1-4>}
+GROUP=${1:?usage: sbatch generate/sedoo/build_psf_lut.slurm <1-4> [slabs]}
+SLABS=${2:-}
 
 case "$GROUP" in
 1) SPECIES=(ammonium blackcar) ;;
@@ -80,5 +82,6 @@ for species in "${SPECIES[@]}"; do
     python generate/sedoo/build_psf_lut.py \
         --species "$species" \
         --training "$TRAINING" \
-        --out "$OUT"
+        --out "$OUT" \
+        ${SLABS:+--slabs "$SLABS"}
 done
