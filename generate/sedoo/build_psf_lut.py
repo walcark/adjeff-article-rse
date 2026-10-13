@@ -179,7 +179,13 @@ def main() -> None:
                 vaa=VAA,
                 species={species: 1.0},
             )
-            scenes = builder(band, run, cfg=config, batch_size=BATCH_SIZE)
+            scenes = builder(
+                band,
+                run,
+                cfg=config,
+                batch_size=BATCH_SIZE,
+                **({"n_ph_radiative": run.n_ph} if run.smoke else {}),
+            )
             model = make_model(
                 Unif2Surface,
                 KingPSF,
