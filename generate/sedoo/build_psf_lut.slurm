@@ -56,13 +56,24 @@ source .pixi-activate.sh
 set -u
 
 export SMARTG_DIR_AUXDATA="$REPO/inputs/smartg_auxdata"
-for needed in acs aerosols atmospheres; do
-    if [ ! -d "${SMARTG_DIR_AUXDATA:-}/$needed" ]; then
-        echo "missing '$needed' under SMARTG_DIR_AUXDATA='${SMARTG_DIR_AUXDATA:-}'." >&2
-        echo "Run on the login node: pixi run download-auxdata" >&2
+for needed in acs aerosols/OPAC/mixtures atmospheres; do
+    if [ ! -d "$SMARTG_DIR_AUXDATA/$needed" ]; then
+        echo "missing '$needed' under '$SMARTG_DIR_AUXDATA'; the repository" >&2
+        echo "ships it, so check that the checkout is complete." >&2
         exit 1
     fi
 done
+
+# `--export=none` gives the job a bare environment, which is where an
+# interactive run and this one part ways.  Printed so that a failure is
+# readable in the .err file without a second submission.
+echo "host       $(hostname)" >&2
+echo "gpu        $(nvidia-smi --query-gpu=name --format=csv,noheader | head -1)" >&2
+echo "python     $(command -v python)" >&2
+echo "adjeff     $(python -c 'import importlib.metadata as m; print(m.version("adjeff"))')" >&2
+echo "auxdata    $SMARTG_DIR_AUXDATA" >&2
+echo "cache      $ADJEFF_ARTICLE_CACHE" >&2
+echo "out        $OUT" >&2
 
 for species in "${SPECIES[@]}"; do
     echo "=== group $GROUP, $species" >&2
