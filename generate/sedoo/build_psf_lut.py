@@ -1,7 +1,7 @@
 """Build the lookup table of King PSF parameters deposited on SEDOO.
 
-One netCDF per CAMS species, holding ``sigma`` and ``gamma`` over the
-cube the deposited tables use:
+One netCDF per CAMS species, holding the ``sigma`` and ``gamma`` coefficients
+of the King PSF model:
 
 =========  ==  ==================================================
 dimension   n  values
@@ -14,15 +14,6 @@ dimension   n  values
 ``sza``     1  40 degrees
 ``vza``     1  0 degrees
 =========  ==  ==================================================
-
-That is 1296 independent optimisations per species, so the script has to
-be interruptible.  adjeff caches the Smart-G side and nothing else: a
-`SceneModule` returns a cached result when its content hash is found, so
-the forward runs survive a restart, but `fit` re-runs every combo it is
-given and `fit(store=...)` only writes kernels out to free RAM.  So this
-checkpoints itself: the output file is created full of NaN, one slab is
-written per `(band, href, h, rh)` with the nine AOT swept inside it, and
-a restart skips the slabs already filled.
 
 Usage
 -----
@@ -48,8 +39,6 @@ from adjeff_article_1.runconfig import RunConfig, parse_run
 from adjeff_article_1.scenes import disk_scenes, gauss_scenes, mixed_scenes
 from adjeff_article_1.utils import get_results_path
 
-#: The deposited cube, axis by axis.  B10 is absent: it is the cirrus
-#: band, and no surface reflectance is retrieved in it.
 BANDS: tuple[SensorBand, ...] = tuple(b for b in S2Band if b is not S2Band.B10)
 AOT = tuple(round(0.1 * i, 1) for i in range(9))
 RH = (50.0, 90.0, 95.0)
@@ -78,10 +67,7 @@ SPECIES = (
     "sulphate",
 )
 
-#: Landscapes to fit on.  The deposited tables were fitted on Gaussians;
-#: `disks` is what the figures of the article use and what this defaults
-#: to, so a regenerated cube is not a reproduction of the deposited one
-#: unless `gauss` is asked for.
+#: Landscapes to fit on.
 TRAINING_SETS = {
     "disks": (disk_scenes, "Disk radius=[1.0, 5.0, 50.0] km"),
     "gauss": (gauss_scenes, "Gaussian sigma=[1.0, 5.0, 50.0] km"),
@@ -118,10 +104,7 @@ def empty_cube(species: str, training: str) -> xr.Dataset:
     }
     shape = tuple(len(v) for v in coords.values())
     return xr.Dataset(
-        {
-            name: (tuple(coords), np.full(shape, np.nan))
-            for name in PARAMETERS
-        },
+        {name: (tuple(coords), np.full(shape, np.nan)) for name in PARAMETERS},
         coords=coords,
         attrs={
             "psf_model": "king",
@@ -223,25 +206,28 @@ def slab_done(cube: xr.Dataset, where: dict[str, float]) -> bool:
     bool
         True when no parameter is NaN anywhere in the slab.
     """
-    return not any(
-        bool(np.isnan(cube[name].sel(**where)).any()) for name in PARAMETERS
-    )
+    return not any(bool(np.isnan(cube[name].sel(**where)).any()) for name in PARAMETERS)
 
 
 def fit_slab(
     band: SensorBand,
     href: float,
-    height: float,
-    rh: float,
     species: str,
     run: RunConfig,
     training: str,
 ) -> dict[str, np.ndarray]:
-    """Optimise one King PSF per AOT, at a fixed band and atmosphere.
+    """Optimise one King PSF per ``(h, rh, aot)``, at a fixed band and href.
 
-    The nine AOT travel as one vectorised configuration: adjeff batches
-    the Smart-G runs over them, and `fit` then performs one independent
-    optimisation per combo.
+    `RhoToaSymSampler` declares ``loop(sza, vza) vec(aot, rh, h, href)``, so
+    every atmospheric state of the slab travels in one Smart-G call: 54
+    states here against the 9 of an AOT-only slab, which is 24 launches for
+    the whole cube rather than 144.
+
+    ``href`` stays out of the sweep on purpose.  The sampler returns
+    ``rho_toa(aot, rh, href, h, y, x)`` materialised in memory, about 32 MB
+    per state at ``n = 1999``, and the pipeline holds ``rho_unif`` beside it
+    for each of the three training scenes.  54 states peak near 10 GB; the
+    108 of a full sweep would double that.
 
     Parameters
     ----------
@@ -249,10 +235,6 @@ def fit_slab(
         Band to fit.
     href : float
         Aerosol scale height, in km.
-    height : float
-        Ground elevation, in km.
-    rh : float
-        Relative humidity, in percent.
     species : str
         CAMS species.
     run : RunConfig
@@ -263,13 +245,14 @@ def fit_slab(
     Returns
     -------
     dict
-        ``{parameter: values over AOT}``, ordered as `AOT`.
+        ``{parameter: values over (h, rh, aot)}``, in the order the cube
+        holds those dimensions.
     """
     config = make_full_config(
         bands=[band],
         aot=list(AOT),
-        rh=rh,
-        h=height,
+        rh=list(RH),
+        h=list(H),
         href=href,
         sza=SZA[0],
         vza=VZA[0],
@@ -296,11 +279,11 @@ def fit_slab(
         device=run.device,
     )
     fitted = psf_params(tree, band)
-    return {name: _over_aot(fitted[name], name) for name in PARAMETERS}
+    return {name: _over_sweep(fitted[name], name) for name in PARAMETERS}
 
 
-def _over_aot(values: xr.DataArray, name: str) -> np.ndarray:
-    """Return *values* as one number per AOT, in the order of `AOT`.
+def _over_sweep(values: xr.DataArray, name: str) -> np.ndarray:
+    """Return *values* over ``(h, rh, aot)``, as the cube orders them.
 
     Parameters
     ----------
@@ -313,23 +296,22 @@ def _over_aot(values: xr.DataArray, name: str) -> np.ndarray:
     Returns
     -------
     np.ndarray
-        Shape ``(len(AOT),)``.
+        Shape ``(len(H), len(RH), len(AOT))``.
 
     Raises
     ------
     ValueError
-        If the fit did not return one value per AOT, which would mean the
-        nine configurations collapsed into fewer combos.
+        If the fit did not return one value per swept state, which would
+        mean the configurations collapsed into fewer combos.
     """
-    if "aot" in values.dims:
-        values = values.sel(aot=list(AOT))
-    flat = np.asarray(values.values, dtype=float).ravel()
-    if flat.size != len(AOT):
+    wanted = {"h": list(H), "rh": list(RH), "aot": list(AOT)}
+    missing = [dim for dim in wanted if dim not in values.dims]
+    if missing:
         raise ValueError(
-            f"{name} came back with {flat.size} values for {len(AOT)} AOT; "
-            f"dims were {values.dims}"
+            f"{name} came back without {missing}; dims were {values.dims}"
         )
-    return flat
+    ordered = values.sel(wanted).transpose("h", "rh", "aot")
+    return np.asarray(ordered.values, dtype=float)
 
 
 def build(
@@ -363,14 +345,18 @@ def build(
     cube = load_or_create(path, species, training)
 
     slabs = [
-        {"band": float(band.wl_nm), "href": href, "h": height, "rh": rh,
-         "sza": SZA[0], "vza": VZA[0]}
-        for (band, href, height, rh) in itertools.product(BANDS, HREF, H, RH)
+        {
+            "band": float(band.wl_nm),
+            "href": href,
+            "sza": SZA[0],
+            "vza": VZA[0],
+        }
+        for (band, href) in itertools.product(BANDS, HREF)
     ]
     todo = [w for w in slabs if not slab_done(cube, w)]
     print(
         f"{species}: {len(todo)} of {len(slabs)} slabs left, "
-        f"{len(todo) * len(AOT)} fits",
+        f"{len(todo) * len(H) * len(RH) * len(AOT)} fits",
         flush=True,
     )
     if dry_run:
@@ -380,13 +366,10 @@ def build(
     for index, where in enumerate(todo, 1):
         band = by_wavelength[where["band"]]
         print(
-            f"  [{index}/{len(todo)}] {band.id} "
-            f"href={where['href']:g} h={where['h']:g} rh={where['rh']:g}",
+            f"  [{index}/{len(todo)}] {band.id} href={where['href']:g}",
             flush=True,
         )
-        fitted = fit_slab(
-            band, where["href"], where["h"], where["rh"], species, run, training
-        )
+        fitted = fit_slab(band, where["href"], species, run, training)
         for name, values in fitted.items():
             cube[name].loc[where] = values
         # Written after every slab: this is the whole point of the
