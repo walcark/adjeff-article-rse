@@ -56,6 +56,8 @@ VAA = 0.0
 RES_KM = 0.060
 N = 3999
 
+BATCH_SIZE = 8
+
 SPECIES = (
     "ammonium",
     "blackcar",
@@ -224,11 +226,10 @@ def fit_slab(
     states here against the 9 of an AOT-only slab, which is 24 launches for
     the whole cube rather than 144.
 
-    ``href`` stays out of the sweep on purpose.  The sampler returns
-    ``rho_toa(aot, rh, href, h, y, x)`` materialised in memory, about 32 MB
-    per state at ``n = 1999``, and the pipeline holds ``rho_unif`` beside it
-    for each of the three training scenes.  54 states peak near 10 GB; the
-    108 of a full sweep would double that.
+    ``href`` stays out of the sweep on purpose.  A state weighs 128 MB at
+    ``n = 3999``, and the peak is one batch of them inside the point
+    function, the sweep itself being written through to zarr and read back
+    lazily.  Hence `BATCH_SIZE`, well under the 64 adjeff defaults to.
 
     Parameters
     ----------
@@ -262,7 +263,7 @@ def fit_slab(
         species={species: 1.0},
     )
     builder = TRAINING_SETS[training][0]
-    scenes = builder(band, run, cfg=config)
+    scenes = builder(band, run, cfg=config, batch_size=BATCH_SIZE)
 
     model = make_model(
         Unif2Surface,
