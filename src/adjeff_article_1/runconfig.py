@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -20,7 +21,7 @@ import adjeff
 from adjeff.core import S2Band
 
 from . import _logging as article_logging
-from .utils import get_cache_path, get_results_path
+from .utils import get_auxdata_path, get_cache_path, get_results_path
 
 __all__ = [
     "ARTICLE_ATMOSPHERE",
@@ -226,6 +227,10 @@ def parse_run(
         parser = argparse.ArgumentParser(description=description)
     add_run_arguments(parser)
     args = parser.parse_args()
+
+    # Smart-G reads it from the environment and returns NaN when it points
+    # nowhere, so the repository names its own dataset.
+    os.environ.setdefault("SMARTG_DIR_AUXDATA", str(get_auxdata_path()))
 
     # adjeff prints nothing until asked.  Turning logging on is the
     # application's business, and every figure script reaches here.
