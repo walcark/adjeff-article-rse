@@ -13,8 +13,12 @@ output/smoke/
 # cluster job reports, named after the job id
 sbatch_reports/
 
-# the Smart-G auxiliary dataset, downloaded by `pixi run download-auxdata`
-inputs/smartg_auxdata/
+# the Smart-G auxiliary dataset, downloaded by `pixi run download-auxdata`,
+# except the two directories a figure needs, versioned here so that
+# reproducing one takes no network at all
+inputs/smartg_auxdata/*
+!inputs/smartg_auxdata/acs/
+!inputs/smartg_auxdata/atmospheres/
 
 # python cache files
 __pycache__/
