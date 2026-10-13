@@ -5,11 +5,6 @@
 # everything generate/ produces
 results/
 
-# Smart-G caches a script wrote before the cache root moved out of the
-# tree.  Reproducible, gigabytes, and nothing reads them any more.
-output/cache_review/
-output/smoke/
-
 # cluster job reports, named after the job id
 sbatch_reports/
 
