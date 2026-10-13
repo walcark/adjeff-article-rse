@@ -6,10 +6,10 @@ of the King PSF model:
 =========  ==  ==================================================
 dimension   n  values
 =========  ==  ==================================================
-``band``   12  the Sentinel-2 bands except B10, the cirrus band
+``band``   12  the sensor's bands, Sentinel-2 except B10 by default
 ``aot``     9  0.0 to 0.8 by 0.1
-``rh``      3  50, 90, 95 %
-``href``    2  2, 4 km
+``rh``      4  0, 50, 90, 95 %
+``href``    3  1, 2, 4 km
 ``h``       2  0, 3 km
 ``sza``     1  40 degrees
 ``vza``     1  0 degrees
@@ -39,23 +39,23 @@ from adjeff_article_1.runconfig import RunConfig, parse_run
 from adjeff_article_1.scenes import disk_scenes, gauss_scenes, mixed_scenes
 from adjeff_article_1.utils import get_results_path
 
-BANDS: tuple[SensorBand, ...] = tuple(b for b in S2Band if b is not S2Band.B10)
+SENSORS: dict[str, tuple[SensorBand, ...]] = {
+    "sentinel2": tuple(b for b in S2Band if b is not S2Band.B10),
+}
+
 AOT = tuple(round(0.1 * i, 1) for i in range(9))
-RH = (50.0, 90.0, 95.0)
-HREF = (2.0, 4.0)
+RH = (0.0, 50.0, 90.0, 95.0)
+HREF = (1.0, 2.0, 4.0)
 H = (0.0, 3.0)
 SZA = (40.0,)
 VZA = (0.0,)
 
-#: Fixed across the cube, and recorded in the file's attributes.
 SAA = 0.0
 VAA = 0.0
 
-#: Grid of the training landscapes, as the deposited tables declare it.
-RES_KM = 0.12
-N = 1999
+RES_KM = 0.060
+N = 3999
 
-#: Species, named as the CAMS tables of ``inputs/cams`` are.
 SPECIES = (
     "ammonium",
     "blackcar",
@@ -67,18 +67,16 @@ SPECIES = (
     "sulphate",
 )
 
-#: Landscapes to fit on.
 TRAINING_SETS = {
     "disks": (disk_scenes, "Disk radius=[1.0, 5.0, 50.0] km"),
     "gauss": (gauss_scenes, "Gaussian sigma=[1.0, 5.0, 50.0] km"),
     "mixed": (mixed_scenes, "Gaussian and disk, [1.0, 5.0, 50.0] km"),
 }
 
-#: Parameters of the King model, in the order the files carry them.
 PARAMETERS = ("sigma", "gamma")
 
 
-def empty_cube(species: str, training: str) -> xr.Dataset:
+def empty_cube(sensor: str, species: str, training: str) -> xr.Dataset:
     """Return the cube of the right shape, filled with NaN.
 
     Parameters
@@ -94,7 +92,7 @@ def empty_cube(species: str, training: str) -> xr.Dataset:
         ``sigma`` and ``gamma`` over the seven dimensions, all NaN.
     """
     coords = {
-        "band": [float(b.wl_nm) for b in BANDS],
+        "band": [float(b.wl_nm) for b in SENSORS[sensor]],
         "sza": list(SZA),
         "vza": list(VZA),
         "h": list(H),
@@ -108,6 +106,7 @@ def empty_cube(species: str, training: str) -> xr.Dataset:
         coords=coords,
         attrs={
             "psf_model": "king",
+            "sensor": sensor,
             "species": species,
             "sza_deg": SZA[0],
             "vza_deg": VZA[0],
@@ -120,7 +119,9 @@ def empty_cube(species: str, training: str) -> xr.Dataset:
     )
 
 
-def load_or_create(path: Path, species: str, training: str) -> xr.Dataset:
+def load_or_create(
+    path: Path, sensor: str, species: str, training: str
+) -> xr.Dataset:
     """Return the cube to fill, read back from *path* when it exists.
 
     A cube whose axes do not match `empty_cube` is refused rather than
@@ -146,7 +147,7 @@ def load_or_create(path: Path, species: str, training: str) -> xr.Dataset:
     ValueError
         If an existing file describes a different cube.
     """
-    fresh = empty_cube(species, training)
+    fresh = empty_cube(sensor, species, training)
     if not path.is_file():
         return fresh
 
@@ -315,6 +316,7 @@ def _over_sweep(values: xr.DataArray, name: str) -> np.ndarray:
 
 
 def build(
+    sensor: str,
     species: str,
     run: RunConfig,
     training: str,
@@ -325,6 +327,8 @@ def build(
 
     Parameters
     ----------
+    sensor : str
+        Key of `SENSORS`, whose bands the cube is tabulated over.
     species : str
         CAMS species, one of `SPECIES`.
     run : RunConfig
@@ -341,8 +345,8 @@ def build(
     Path
         The file written.
     """
-    path = out / f"king_psf_{species}.nc"
-    cube = load_or_create(path, species, training)
+    path = out / f"king_psf_{sensor}_{species}.nc"
+    cube = load_or_create(path, sensor, species, training)
 
     slabs = [
         {
@@ -351,7 +355,7 @@ def build(
             "sza": SZA[0],
             "vza": VZA[0],
         }
-        for (band, href) in itertools.product(BANDS, HREF)
+        for (band, href) in itertools.product(SENSORS[sensor], HREF)
     ]
     todo = [w for w in slabs if not slab_done(cube, w)]
     print(
@@ -362,7 +366,7 @@ def build(
     if dry_run:
         return path
 
-    by_wavelength = {float(b.wl_nm): b for b in BANDS}
+    by_wavelength = {float(b.wl_nm): b for b in SENSORS[sensor]}
     for index, where in enumerate(todo, 1):
         band = by_wavelength[where["band"]]
         print(
@@ -372,8 +376,6 @@ def build(
         fitted = fit_slab(band, where["href"], species, run, training)
         for name, values in fitted.items():
             cube[name].loc[where] = values
-        # Written after every slab: this is the whole point of the
-        # checkpoint, and a netCDF of 1296 floats costs nothing to rewrite.
         save(cube, path)
 
     print(f"{species}: {path}", flush=True)
@@ -383,6 +385,12 @@ def build(
 def build_parser() -> argparse.ArgumentParser:
     """Return the parser for this script's own options."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument(
+        "--sensor",
+        choices=sorted(SENSORS),
+        default="sentinel2",
+        help="sensor whose bands the cube is tabulated over",
+    )
     parser.add_argument(
         "--species",
         nargs="+",
@@ -424,11 +432,14 @@ def main() -> None:
     run = run.resolve(n=N, res_km=RES_KM)
 
     for species in args.species:
-        path = args.out / f"king_psf_{species}.nc"
+        path = args.out / f"king_psf_{args.sensor}_{species}.nc"
         if args.force and path.is_file():
             print(f"{species}: discarding {path}", flush=True)
             path.unlink()
-        build(species, run, args.training, args.out, dry_run=args.dry_run)
+        build(
+            args.sensor, species, run, args.training, args.out,
+            dry_run=args.dry_run,
+        )
 
 
 if __name__ == "__main__":
