@@ -26,7 +26,6 @@ cd adjeff-article-rse
 
 chmod +x install_env makefig
 ./install_env                 # installs pixi into ~/.pixi, then the environment
-pixi run download-auxdata     # the Smart-G auxiliary dataset
 
 ./makefig figure7             # one figure
 ./makefig                     # all of them, successively, which is long
@@ -63,17 +62,20 @@ grows as the AOT drops below 0.1.
 
 ## What the repository needs
 
-`pixi run download-auxdata` fetches the Smart-G auxiliary dataset the way
-[the Smart-G page](https://github.com/hygeos/smartg) describes. It also
-copies two things that dataset does not carry. Four input sets are
-versioned here, so reproducing the figures needs no further download:
+Nothing is downloaded: `inputs/` holds what the figures read, at the paths
+Smart-G reads them from.
 
 | | |
 |---|---|
-| `inputs/afgl/` | the simplified exponential AFGL profile |
-| `inputs/cams/` | optical properties of the eight CAMS aerosol species |
+| `inputs/smartg_auxdata/acs/` | molecular absorption cross sections |
+| `inputs/smartg_auxdata/atmospheres/` | the AFGL profiles, exponential one included |
+| `inputs/smartg_auxdata/aerosols/OPAC/mixtures/` | optical properties of the eight CAMS aerosol species |
 | `inputs/modis/` | the MODIS skylight table and BRDF weights |
 | `inputs/gloria/` | pre-processed GLORIA matchups |
+
+That is the subset of the Smart-G auxiliary dataset these figures touch,
+6 MB beside the 168 MB of aerosol tables. The rest of
+[the full dataset](https://github.com/hygeos/smartg) is not needed.
 
 The CAMS tables were produced with MOPSMAP, through
 [pymopsmap](https://github.com/walcark/pymopsmap).
@@ -100,11 +102,9 @@ generate/            everything that produces something
 └── smoke.py         checks every script above still runs
 
 inputs/              what the repository needs and does not produce
-├── cams/            optical properties of the 8 CAMS species, versioned
-├── afgl/            the simplified exponential AFGL profile, versioned
-├── modis/           the MODIS skylight table and BRDF weights, versioned
-├── gloria/          pre-processed GLORIA matchups, versioned
-└── smartg_auxdata/  downloaded by `pixi run download-auxdata`, ignored
+├── modis/           the MODIS skylight table and BRDF weights
+├── gloria/          pre-processed GLORIA matchups
+└── smartg_auxdata/  the subset of the Smart-G dataset the figures read
 
 results/             everything produced, ignored by git
 ├── figures/         .png

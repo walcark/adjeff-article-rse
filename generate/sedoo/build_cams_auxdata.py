@@ -29,8 +29,9 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_OUT = REPO_ROOT / "inputs/cams"
+from adjeff_article_1.utils import get_auxdata_aer_path
+
+DEFAULT_OUT = get_auxdata_aer_path()
 
 #: Relative humidities, in percent. Smart-G interpolates ``ext`` and
 #: ``ssa`` linearly between them, so the grid is denser where the

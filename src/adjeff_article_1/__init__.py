@@ -22,7 +22,6 @@ imports this package to locate the Smart-G auxiliary data, which happens
 bootstrap fail.  Scripts import the submodules they need explicitly.
 """
 
-from .download_auxdata import download_smartg_auxdata_and_cams
 from .utils import (
     get_auxdata_path,
     get_cache_path,
@@ -31,7 +30,6 @@ from .utils import (
 )
 
 __all__ = [
-    "download_smartg_auxdata_and_cams",
     "get_auxdata_path",
     "get_cache_path",
     "get_inputs_path",
