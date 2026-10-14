@@ -3,7 +3,10 @@
 #
 #   mkdir -p sbatch_reports          # once: sbatch resolves --output at submit
 #   sbatch generate/sedoo/build_psf_lut.slurm 1 1      # one slab, to time it
-#   for g in 1 2 3 4; do sbatch generate/sedoo/build_psf_lut.slurm $g; done
+#   for g in $(seq 8); do sbatch generate/sedoo/build_psf_lut.slurm $g; done
+#
+# One species per job: a slab takes about 1h40 and a species holds 36 of
+# them, so two species would not fit in the 68 hours asked for below.
 #
 #SBATCH --job-name=psf_lut
 #SBATCH --export=none
@@ -20,19 +23,15 @@
 
 set -euo pipefail
 
-GROUP=${1:?usage: sbatch generate/sedoo/build_psf_lut.slurm <1-4> [slabs]}
+GROUP=${1:?usage: sbatch generate/sedoo/build_psf_lut.slurm <1-8> [slabs]}
 SLABS=${2:-}
 
-case "$GROUP" in
-1) SPECIES=(ammonium blackcar) ;;
-2) SPECIES=(dust nitrate) ;;
-3) SPECIES=(organicm seasalt) ;;
-4) SPECIES=(secondary_organic sulphate) ;;
-*)
-    echo "group must be 1, 2, 3 or 4, got '$GROUP'" >&2
+ALL=(ammonium blackcar dust nitrate organicm seasalt secondary_organic sulphate)
+if [ "$GROUP" -lt 1 ] || [ "$GROUP" -gt "${#ALL[@]}" ]; then
+    echo "group must be 1 to ${#ALL[@]}, got '$GROUP'" >&2
     exit 2
-    ;;
-esac
+fi
+SPECIES=${ALL[$((GROUP - 1))]}
 
 SCRATCH=/work/scratch/data/walcark
 REPO=/work/scratch/env/walcark/adjeff-article-rse
@@ -77,11 +76,10 @@ echo "auxdata    $SMARTG_DIR_AUXDATA" >&2
 echo "cache      $ADJEFF_ARTICLE_CACHE" >&2
 echo "out        $OUT" >&2
 
-for species in "${SPECIES[@]}"; do
-    echo "=== group $GROUP, $species" >&2
-    python generate/sedoo/build_psf_lut.py \
-        --species "$species" \
-        --training "$TRAINING" \
-        --out "$OUT" \
-        ${SLABS:+--slabs "$SLABS"}
-done
+echo "species    $SPECIES" >&2
+
+python generate/sedoo/build_psf_lut.py \
+    --species "$SPECIES" \
+    --training "$TRAINING" \
+    --out "$OUT" \
+    ${SLABS:+--slabs "$SLABS"}

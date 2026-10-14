@@ -48,22 +48,25 @@ the same reason.
 ## Building the SEDOO lookup table
 
 `generate/sedoo/build_psf_lut.py` fits the King PSF over the cube the
-deposited tables use: 12 bands, 9 aerosol optical thicknesses, 3
-humidities, 2 reference heights, 2 ground elevations. That is 1296
+deposited tables use: 12 bands, 9 aerosol optical thicknesses, 4
+humidities, 3 reference heights, 2 ground elevations. That is 2592
 independent optimisations per species, and eight species.
 
-So it runs on a cluster, two species per job:
+So it runs on a cluster, one species per job:
 
 ```bash
 mkdir -p sbatch_reports     # once: sbatch resolves --output at submit time
-for g in 1 2 3 4; do sbatch generate/sedoo/build_psf_lut.slurm $g; done
+sbatch generate/sedoo/build_psf_lut.slurm 1 1          # one slab, to time it
+for g in $(seq 8); do sbatch generate/sedoo/build_psf_lut.slurm $g; done
 ```
 
-The cube is created full of NaN and one slab is written per
-`(band, href, h, rh)`, with the nine thicknesses swept inside it, so a job
-that runs out of time is resubmitted and carries on. That only works
-because the cache and the cubes outlive the job: the script points both at
-the scratch.
+A slab is one `(band, href)`, its 72 states swept in one go, and it takes
+about 1h40 on a V100: 36 slabs make 59 hours, which is why a job carries
+one species rather than two. Each slab is written to its own file under
+`slabs/` as soon as it is fitted, so a job that runs out of time is
+resubmitted and skips what is already there. That only works because the
+cache and the slabs outlive the job: the script points both at the
+scratch.
 
 `--training gauss` is what the deposited tables were fitted on; `--training
 disks` is what the figures of the article use. A cube built with the other
