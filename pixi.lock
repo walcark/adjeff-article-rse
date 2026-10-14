@@ -335,6 +335,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/2a/1d/2ab1287eb464f346f3fc4d8e7c9130eb82e2942ac707e2ef63b29458b42e/gatiab-1.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2c/58/ca301544e1fa93ed4f80d724bf5b194f6e4b945841c5bfd555878eea9fcb/referencing-0.37.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/2d/d9/d40ec73896babff1e180bf7c9196e104f4565674f985c0597854de43c54d/adjeff-1.2.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2e/3f/12e6d2a5657c545cdd9108e2865bea0e276714c303cdf83560a3577b519a/sensorsio-1.0.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2e/9d/17d7e59795f634edb59095c80aa7b698c75d396aecb246e712f770e8c973/smartg-2.0.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/32/d5/f9a850d79b0851d1d4ef6456097579a9005b31fea68726a4ae5f2d82ddd9/threadpoolctl-3.6.0-py3-none-any.whl
@@ -406,7 +407,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/a1/f7/907b98438cf00bdc4e296570058f29a347214bb42338a48e3b7eae58ae2a/notebook-7.6.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a5/69/6da5581c6a7fede7dc261bf4e67d6adca4196f176b43288b55b3db395b6e/mdit_py_plugins-0.6.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a6/c4/0679472c60052c27efa612b4cd3ddd2a23e885dcdc73461781d2c802d39e/configobj-5.0.9-py2.py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a6/fe/3306055ee94f02ab363844330a916750318ee184acdc32730ed7a215bd12/adjeff-1.2.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a9/18/489c97b834dfff9cf2fc2507cede4bcd4b11e67f84bc462acd1992496f86/structlog-26.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a9/84/1798b6d85ecde0e31546004efd25c5de1b1f49250644a60cce460e12593a/hatchling-1.32.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b1/db/dceb9dd5b231e1da801793f8acc9f3c52a7e1afe40bb1aae37e02b0faad5/cffi-2.1.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
@@ -5906,6 +5906,24 @@ packages:
   - rpds-py>=0.7.0
   - typing-extensions>=4.4.0 ; python_full_version < '3.13'
   requires_python: '>=3.10'
+- pypi: https://files.pythonhosted.org/packages/2d/d9/d40ec73896babff1e180bf7c9196e104f4565674f985c0597854de43c54d/adjeff-1.2.1-py3-none-any.whl
+  name: adjeff
+  version: 1.2.1
+  sha256: c2b0be54691328500bd702c897dc14bee790d9915eebde5850e6d87e791d1e77
+  requires_dist:
+  - dask>=2024.1.0
+  - joblib>=1.3.0
+  - numpy>=2.0.0
+  - pydantic>=2.12.5
+  - rasterio>=1.3.0
+  - scipy>=1.10.0
+  - structlog>=24.0.0
+  - torch>=2.0.0
+  - tqdm>=4.0.0
+  - xarray>=2026.1.0
+  - xsweep>=0.4.0
+  - zarr>=3.0.0
+  requires_python: '>=3.11,<3.13'
 - pypi: https://files.pythonhosted.org/packages/2e/3f/12e6d2a5657c545cdd9108e2865bea0e276714c303cdf83560a3577b519a/sensorsio-1.0.2-py3-none-any.whl
   name: sensorsio
   version: 1.0.2
@@ -7001,24 +7019,6 @@ packages:
   version: 5.0.9
   sha256: 1ba10c5b6ee16229c79a05047aeda2b55eb4e80d7c7d8ecf17ec1ca600c79882
   requires_python: '>=3.7'
-- pypi: https://files.pythonhosted.org/packages/a6/fe/3306055ee94f02ab363844330a916750318ee184acdc32730ed7a215bd12/adjeff-1.2.0-py3-none-any.whl
-  name: adjeff
-  version: 1.2.0
-  sha256: 7fb891ff22c5ab6eca560504e2d229a231e342fd5ea106d3d1cfc9941b7f0787
-  requires_dist:
-  - dask>=2024.1.0
-  - joblib>=1.3.0
-  - numpy>=2.0.0
-  - pydantic>=2.12.5
-  - rasterio>=1.3.0
-  - scipy>=1.10.0
-  - structlog>=24.0.0
-  - torch>=2.0.0
-  - tqdm>=4.0.0
-  - xarray>=2026.1.0
-  - xsweep>=0.4.0
-  - zarr>=3.0.0
-  requires_python: '>=3.11,<3.13'
 - pypi: https://files.pythonhosted.org/packages/a9/18/489c97b834dfff9cf2fc2507cede4bcd4b11e67f84bc462acd1992496f86/structlog-26.1.0-py3-none-any.whl
   name: structlog
   version: 26.1.0
