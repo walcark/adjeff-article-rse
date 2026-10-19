@@ -12,7 +12,7 @@ back, not that the simulation chain still works.
 Usage
 -----
     pixi run python generate/smoke.py --cold
-    pixi run python generate/smoke.py figure2 figure3
+    pixi run python generate/smoke.py figure2 figureC1
 """
 
 from __future__ import annotations

@@ -14,8 +14,9 @@
 #   - figure17, the Cairo transect, has a script here but needs a MAJA
 #     product and a DEM that are not shipped, so it is run by hand:
 #     generate/figures/figure17.py --product-path ... --mnt-path ...
-#   - loss_landscape, rmse_vs_encircled_energy and elevation_low_aot are
-#     not figures of the article; they support statements in the text.
+#   - figureC1 and figureC2 are the two figures of Appendix C;
+#     elevation_low_aot is not a figure of the article at all, it
+#     supports a statement of section 3.2.2.
 #
 # Requirements: SMARTG_DIR_AUXDATA must be set.
 # Run via pixi: pixi run figures-all
@@ -34,10 +35,8 @@ run_figure() {
     local fig="$1"
     echo ">>> $fig"
     case "$fig" in
-    loss_landscape) python "$FIGS/figures/loss_landscape.py" ;;
-    rmse_vs_encircled_energy)
-        python "$FIGS/figures/rmse_vs_encircled_energy.py"
-        ;;
+    figureC1) python "$FIGS/figures/figureC1.py" ;;
+    figureC2) python "$FIGS/figures/figureC2.py" ;;
     figure2) python "$FIGS/figures/figure2.py" ;;
     figure3) python "$FIGS/figures/figure3.py" ;;
     figure5)
@@ -165,6 +164,7 @@ run_figure() {
 
 ALL_FIGURES=(
     figure2 figure3
+    figureC1 figureC2
     figure5 figure6 figure7 figure8 figure9 figure10 figure11
     figure12 figure13 figure14 figure15
     figures20-21

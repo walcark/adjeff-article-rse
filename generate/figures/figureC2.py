@@ -1,4 +1,4 @@
-"""Scatter plot: radial RMSE loss vs encircled-energy radius for GG kernels.
+"""Encircled-energy radii against the radial RMSE loss (figure C.2).
 
 For a Gaussian Generalized PSF model, the (n, sigma) space is explored and
 for each couple (n, sigma), the radial RMSE loss and encircled-energy are
@@ -84,7 +84,7 @@ def main() -> None:
     axes[0].set_ylabel(r"Radius $[km]$", fontsize=font())
 
     fig.tight_layout()
-    save(fig, "rmse_vs_encircled_energy", run.figs_dir)
+    save(fig, "figureC2", run.figs_dir)
     if not run.smoke:
         plt.show()
 

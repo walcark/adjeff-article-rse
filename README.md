@@ -46,6 +46,8 @@ Figures land in `results/figures/`, tables in `results/tables/`.
 | `figure14` | PSF against the viewing zenith angle | `figures/figure5_15.py` |
 | `figure15` | PSF against the solar zenith angle | `figures/figure5_15.py` |
 | `figures20-21` | King PSF on real Sentinel-2 data, scatter and RMSE gain | `figures/figures20-21.py` |
+| `figureC1` | loss landscape of the generalised Gaussian PSF, four training sets | `figures/figureC1.py` |
+| `figureC2` | encircled-energy radii against the radial RMSE loss | `figures/figureC2.py` |
 | `table_aot_sensitivity` | what a 0.2 error on the AOT costs, per band, answering a reviewer | `reviews/table_aot_sensitivity.py` |
 
 **A target is the number the article prints**: `figure5` builds Fig. 5. The
@@ -61,10 +63,10 @@ python generate/figures/figure17.py \
     --mnt-path /path/to/DEM
 ```
 
-Three targets are not figures of the article: `loss_landscape` and
-`rmse_vs_encircled_energy` support the choice of the training set, and
-`elevation_low_aot` supports the statement of section 3.2.2 that the
-elevation dependency grows as the AOT drops below 0.1.
+`figureC1` and `figureC2` are the two figures of Appendix C, hence their
+names. One target is not a figure of the article at all: `elevation_low_aot`
+supports the statement of section 3.2.2 that the elevation dependency grows
+as the AOT drops below 0.1.
 
 ---
 

@@ -1,4 +1,4 @@
-"""Loss landscape for the GG PSF model under four training configurations.
+"""Loss landscape of the GG PSF model, four training sets (figure C.1).
 
 Four grids over the (n, sigma) parameter space are shown, each built from
 a different set of training scenes:
@@ -87,7 +87,7 @@ def main() -> None:
     cbar = fig.colorbar(im, ax=axes.ravel().tolist())
     style_colorbar(cbar, r"Radial $\mathrm{RMSE}$")
 
-    save(fig, "loss_landscape", run.figs_dir)
+    save(fig, "figureC1", run.figs_dir)
     if not run.smoke:
         plt.show()
 
