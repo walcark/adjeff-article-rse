@@ -13,8 +13,10 @@
 #     manuscript stores them as figs/figure21.png and figs/figure22.png, i.e.
 #     printed Figures 20 and 21.  Copy them with a shift of one.
 #   - figure1 (TikZ), figure6 (phase functions) and the case-study imagery
-#     (figure14prim, figure18, figure18av, figure19, figure20) are built
-#     outside this repository.
+#     (figure14prim, figure18, figure18av, figure20) are built outside this
+#     repository.  figure19 (file name figure19.png, printed Figure 17) has
+#     a script, generate/figures/figure19.py, but needs a MAJA product and
+#     a DEM neither shipped here, so it has no makefig case either.
 #
 # Requirements: SMARTG_DIR_AUXDATA must be set.
 # Run via pixi: pixi run figures-all

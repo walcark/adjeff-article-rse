@@ -45,6 +45,10 @@ adjeff = { path = "../Adjeff", editable = true }
 # plus what this repo imports directly.
 [tool.pixi.dependencies]
 python = ">=3.11,<3.13"
+# Pinned here so sensorsio (PyPI-only, above) does not pull its own PyPI
+# wheel instead: that one bundles a different GDAL, which silently fails
+# to find a MAJA product's bands by their real file type.
+rasterio = ">=1.4.3,<2"
 # smartg hard-depends on pycuda, and it has to come from conda: the PyPI
 # sdist compiles against `cudaProfiler.h`, which only the CUDA toolkit
 # ships, and uv has no way to find it.

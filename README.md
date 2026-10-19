@@ -47,6 +47,7 @@ Figures land in `results/figures/`, tables in `results/tables/`.
 | `figure15` | PSF against the ground elevation | `figures/figure7_17.py` |
 | `figure16` | PSF against the viewing zenith angle | `figures/figure7_17.py` |
 | `figure17` | PSF against the solar zenith angle | `figures/figure7_17.py` |
+| `figure19` | reflectance transect across the Cairo tile, with and without correction | `figures/figure19.py` |
 | `figures22-23` | King PSF on real Sentinel-2 data, scatter and RMSE gain | `figures/figures22-23.py` |
 | `table_aot_sensitivity` | what a 0.2 error on the AOT costs, per band, answering a reviewer | `reviews/table_aot_sensitivity.py` |
 
