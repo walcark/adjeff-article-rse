@@ -1,26 +1,13 @@
 #!/usr/bin/env bash
-# Generate figures for Article 1.
+# Generate the figures of Article 1.  A target is the printed figure number.
 #
-# Usage:
-#   bash makefig              # all figures
-#   bash makefig figure5      # single figure
+#   bash makefig                     # every target of ALL_FIGURES
+#   bash makefig figure5             # one of them
+#   bash makefig figure17 --product-path DIR --mnt-path DIR
 #
-# Naming: a target is the figure number the article prints, so `figure5`
-# builds what the paper calls Fig. 5.  What is not there:
-#
-#   - figure1 (light paths, TikZ), figure4 (phase functions) and the
-#     case-study imagery (figure16, figure18, figure19) are built outside
-#     this repository;
-#   - figure17, the Cairo transect, has a script here but needs a MAJA
-#     product and a DEM that are not shipped, so it is run by hand:
-#     generate/figures/figure17.py --product-path ... --mnt-path ...
-#   - figureC1 and figureC2 are the two figures of Appendix C;
-#     elevation_low_aot is not a figure of the article at all, it
-#     supports a statement of section 3.2.2.
-#
-# Requirements: SMARTG_DIR_AUXDATA must be set.
-# Run via pixi: pixi run figures-all
-#               pixi run makefig figure5   (not yet a pixi task — pass args directly)
+# figure1, figure4, figure16, figure18 and figure19 are built outside this
+# repository.  figure17 takes a MAJA product and a DEM, so it is not in
+# ALL_FIGURES.  elevation_low_aot is not a figure of the article.
 
 set -euo pipefail
 
@@ -33,6 +20,7 @@ mkdir -p "$REPO_ROOT/results/figures" "$REPO_ROOT/results/tables"
 
 run_figure() {
     local fig="$1"
+    shift
     echo ">>> $fig"
     case "$fig" in
     figureC1) python "$FIGS/figures/figureC1.py" ;;
@@ -95,11 +83,8 @@ run_figure() {
             --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
             --species seasalt --remove_rayleigh
         ;;
-    # Sweep of the aerosol height scale.  This is the last figure of the
-    # atmospheric subsection, yet --remove_rayleigh is deliberately absent,
-    # unlike figures 7 to 13: the encircled energy of the published figure
-    # matches the geometric series, molecules included, not the aerosol-only
-    # series (0.41 against 0.61 of the flux within 1 km at 560 nm).
+    # No --remove_rayleigh from here on: the published encircled energy
+    # includes the molecules.
     figure12)
         python "$FIGS/figures/figure5_15.py" \
             --figure figure12 \
@@ -108,7 +93,6 @@ run_figure() {
             --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
             --species sulphate
         ;;
-    # Sweep of the ground elevation.
     figure13)
         python "$FIGS/figures/figure5_15.py" \
             --figure figure13 \
@@ -117,7 +101,6 @@ run_figure() {
             --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
             --species sulphate
         ;;
-    # Sweep of the viewing zenith angle.
     figure14)
         python "$FIGS/figures/figure5_15.py" \
             --figure figure14 \
@@ -126,7 +109,6 @@ run_figure() {
             --sza 40.0 --vza 0.0 8.0 16.0 --saa 0.0 --vaa 0.0 \
             --species sulphate
         ;;
-    # Sweep of the solar zenith angle.
     figure15)
         python "$FIGS/figures/figure5_15.py" \
             --figure figure15 \
@@ -135,9 +117,6 @@ run_figure() {
             --sza 0.0 40.0 80.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
             --species sulphate
         ;;
-    # Ground elevation at low aerosol load.  Not a figure of the article:
-    # supports the statement of Section 3.2.2 that the dependency on the
-    # ground elevation grows as the AOT drops below 0.1.
     elevation_low_aot)
         python "$FIGS/figures/figure5_15.py" \
             --figure elevation_low_aot \
@@ -146,6 +125,7 @@ run_figure() {
             --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
             --species sulphate
         ;;
+    figure17) python "$FIGS/figures/figure17.py" "$@" ;;
     figures20-21) python "$FIGS/figures/figures20-21.py" ;;
     table_aot_sensitivity)
         python "$FIGS/reviews/table_aot_sensitivity.py" \
@@ -175,11 +155,8 @@ if [ $# -eq 0 ]; then
     for fig in "${ALL_FIGURES[@]}"; do
         run_figure "$fig"
     done
-elif [ $# -eq 1 ]; then
-    run_figure "$1"
 else
-    echo "Usage: $0 [figureN]" >&2
-    exit 1
+    run_figure "$@"
 fi
 
 echo "Done. Figures written to results/figures/"
