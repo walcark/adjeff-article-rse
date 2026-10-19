@@ -33,6 +33,9 @@ RES_KM = 0.12
 N_TRAIN = 1999
 TRANSECT_X_KM = 101.0
 N_BINS = 10
+#: States per Smart-G call.  The default of 64 sends the whole binned
+#: map at once, which needs more VRAM than a 8 GB card has.
+BATCH_SIZE = 8
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -56,9 +59,8 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=N_BINS,
         help=(
-            "aot/h discretisation levels: Smart-G runs one multi-profile "
-            "call per group of states, so this trades fidelity for GPU "
-            "memory. Lower it if the radiative pipeline runs out of VRAM."
+            "aot/h discretisation levels: more of them is a finer "
+            "atmosphere and more Smart-G calls."
         ),
     )
     return parser
@@ -97,6 +99,7 @@ def main() -> None:
         n_bins=args.n_bins,
         compute_radiatives=True,
         dedup=True,
+        batch_size=BATCH_SIZE,
     )
 
     # The MAJA product carries rho_unif (atmospheric correction only, no
