@@ -12,7 +12,7 @@ back, not that the simulation chain still works.
 Usage
 -----
     pixi run python generate/smoke.py --cold
-    pixi run python generate/smoke.py figure4 figure5
+    pixi run python generate/smoke.py figure2 figure3
 """
 
 from __future__ import annotations
@@ -33,6 +33,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 #: its scripts build the deposited datasets over hours and inherit
 #: `--smoke` from `parse_run`, so a smoke run would start the real thing.
 SCRIPT_DIRS = (REPO_ROOT / "generate" / "figures", REPO_ROOT / "generate" / "reviews")
+#: Scripts that take data this repository does not ship, so `--smoke`
+#: alone cannot run them.  Reported as skipped rather than as failures.
+NEEDS_OWN_DATA = {"figure17": "needs a MAJA product and a DEM"}
 TIMEOUT_S = 1800
 
 
@@ -85,6 +88,8 @@ def supports_smoke(script: Path) -> tuple[bool, str]:
         return False, f"--help failed: {tail[0] if tail else 'no output'}"
     if "--smoke" not in proc.stdout:
         return False, "no --smoke option yet"
+    if script.stem in NEEDS_OWN_DATA:
+        return False, NEEDS_OWN_DATA[script.stem]
     return True, ""
 
 
@@ -133,7 +138,8 @@ def main() -> int:
     probed = [(s, *supports_smoke(s)) for s in scripts]
     selected = [s for s, ok, _ in probed if ok]
     skipped = [(s, why) for s, ok, why in probed if not ok]
-    broken = [(s, why) for s, why in skipped if why != "no --smoke option yet"]
+    excused = {"no --smoke option yet", *NEEDS_OWN_DATA.values()}
+    broken = [(s, why) for s, why in skipped if why not in excused]
 
     failures = 0
     for script in selected:
@@ -143,12 +149,12 @@ def main() -> int:
         failures += not ok
 
     for script, why in skipped:
-        status = "skip" if why == "no --smoke option yet" else "BROKEN"
+        status = "skip" if why in excused else "BROKEN"
         print(f"{status:4s} {script.stem:26s}         {why}")
 
     print(
         f"\n{len(selected) - failures}/{len(selected)} smoke runs passed, "
-        f"{len(skipped) - len(broken)} not migrated yet"
+        f"{len(skipped) - len(broken)} skipped"
         + (f", {len(broken)} BROKEN" if broken else "")
     )
     return 1 if failures or broken else 0

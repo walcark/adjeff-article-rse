@@ -47,7 +47,7 @@ def psf_comparison_figure(
     Parameters
     ----------
     name : str
-        Output stem, e.g. ``"figure4"``.
+        Output stem, e.g. ``"figure2"``.
     band : SensorBand
         Band to simulate.
     run : RunConfig

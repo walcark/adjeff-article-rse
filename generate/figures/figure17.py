@@ -1,4 +1,4 @@
-"""Reflectance transect across a real MAJA scene (Fig. 17 of the manuscript).
+"""Reflectance transect across a real MAJA scene (figure 17).
 
 Vertical transect at x=101 km of the Cairo Sentinel-2 tile (2023-06-02),
 comparing the surface reflectance without adjacency correction, with the
@@ -8,7 +8,7 @@ Needs a MAJA L2A product and a DEM, neither shipped with this repository.
 
 Usage
 -----
-    python figure19.py \\
+    python figure17.py \\
         --product-path /path/to/SENTINEL2A_..._L2A_T36RVV_.../ \\
         --mnt-path /path/to/DEM
 """
@@ -152,7 +152,7 @@ def main() -> None:
     ax.set_xlim(0.0, float(dist.max()))
     style_axes(ax)
     fig.tight_layout()
-    path = save(fig, "figure19", run.figs_dir)
+    path = save(fig, "figure17", run.figs_dir)
     print(f"wrote {path}")
 
 

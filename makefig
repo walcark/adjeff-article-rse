@@ -3,24 +3,23 @@
 #
 # Usage:
 #   bash makefig              # all figures
-#   bash makefig figure4      # single figure
+#   bash makefig figure5      # single figure
 #
-# Naming: the targets follow the file names of the manuscript, figureN.png,
-# which are two ahead of the printed figure numbers (figure14.png is printed as
-# Figure 12).  Two exceptions to keep in mind:
+# Naming: a target is the figure number the article prints, so `figure5`
+# builds what the paper calls Fig. 5.  What is not there:
 #
-#   - figures22-23 writes results/figures/figure22.png and figure23.png, but the
-#     manuscript stores them as figs/figure21.png and figs/figure22.png, i.e.
-#     printed Figures 20 and 21.  Copy them with a shift of one.
-#   - figure1 (TikZ), figure6 (phase functions) and the case-study imagery
-#     (figure14prim, figure18, figure18av, figure20) are built outside this
-#     repository.  figure19 (file name figure19.png, printed Figure 17) has
-#     a script, generate/figures/figure19.py, but needs a MAJA product and
-#     a DEM neither shipped here, so it has no makefig case either.
+#   - figure1 (light paths, TikZ), figure4 (phase functions) and the
+#     case-study imagery (figure16, figure18, figure19) are built outside
+#     this repository;
+#   - figure17, the Cairo transect, has a script here but needs a MAJA
+#     product and a DEM that are not shipped, so it is run by hand:
+#     generate/figures/figure17.py --product-path ... --mnt-path ...
+#   - loss_landscape, rmse_vs_encircled_energy and elevation_low_aot are
+#     not figures of the article; they support statements in the text.
 #
 # Requirements: SMARTG_DIR_AUXDATA must be set.
 # Run via pixi: pixi run figures-all
-#               pixi run makefig figure4   (not yet a pixi task — pass args directly)
+#               pixi run makefig figure5   (not yet a pixi task — pass args directly)
 
 set -euo pipefail
 
@@ -35,61 +34,63 @@ run_figure() {
     local fig="$1"
     echo ">>> $fig"
     case "$fig" in
+    loss_landscape) python "$FIGS/figures/loss_landscape.py" ;;
+    rmse_vs_encircled_energy)
+        python "$FIGS/figures/rmse_vs_encircled_energy.py"
+        ;;
     figure2) python "$FIGS/figures/figure2.py" ;;
     figure3) python "$FIGS/figures/figure3.py" ;;
-    figure4) python "$FIGS/figures/figure4.py" ;;
-    figure5) python "$FIGS/figures/figure5.py" ;;
-    figure7)
-        python "$FIGS/figures/figure7_17.py" \
-            --figure figure7 \
+    figure5)
+        python "$FIGS/figures/figure5_15.py" \
+            --figure figure5 \
             --aot 0.1 0.3 0.5 0.7 \
             --rh 50.0 --h 0.0 --wl 560.0 --href 2.0 \
             --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
             --species blackcar --remove_rayleigh
         ;;
-    figure8)
-        python "$FIGS/figures/figure7_17.py" \
-            --figure figure8 \
+    figure6)
+        python "$FIGS/figures/figure5_15.py" \
+            --figure figure6 \
             --aot 0.1 0.3 0.5 0.7 \
             --rh 50.0 --h 0.0 --wl 560.0 --href 2.0 \
             --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
             --species sulphate --remove_rayleigh
         ;;
-    figure9)
-        python "$FIGS/figures/figure7_17.py" \
-            --figure figure9 \
+    figure7)
+        python "$FIGS/figures/figure5_15.py" \
+            --figure figure7 \
             --aot 0.1 0.3 0.5 0.7 \
             --rh 95.0 --h 0.0 --wl 560.0 --href 2.0 \
             --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
             --species sulphate --remove_rayleigh
         ;;
-    figure10)
-        python "$FIGS/figures/figure7_17.py" \
-            --figure figure10 \
+    figure8)
+        python "$FIGS/figures/figure5_15.py" \
+            --figure figure8 \
             --aot 0.1 0.3 0.5 0.7 \
             --rh 50.0 --h 0.0 --wl 560.0 --href 2.0 \
             --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
             --species seasalt --remove_rayleigh
         ;;
-    figure11)
-        python "$FIGS/figures/figure7_17.py" \
-            --figure figure11 \
+    figure9)
+        python "$FIGS/figures/figure5_15.py" \
+            --figure figure9 \
             --aot 0.4 \
             --rh 50.0 --h 0.0 --wl 560.0 865.0 2190.0 --href 2.0 \
             --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
             --species blackcar --remove_rayleigh
         ;;
-    figure12)
-        python "$FIGS/figures/figure7_17.py" \
-            --figure figure12 \
+    figure10)
+        python "$FIGS/figures/figure5_15.py" \
+            --figure figure10 \
             --aot 0.4 \
             --rh 50.0 --h 0.0 --wl 560.0 865.0 2190.0 --href 2.0 \
             --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
             --species sulphate --remove_rayleigh
         ;;
-    figure13)
-        python "$FIGS/figures/figure7_17.py" \
-            --figure figure13 \
+    figure11)
+        python "$FIGS/figures/figure5_15.py" \
+            --figure figure11 \
             --aot 0.4 \
             --rh 50.0 --h 0.0 --wl 560.0 865.0 2190.0 --href 2.0 \
             --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
@@ -100,36 +101,36 @@ run_figure() {
     # unlike figures 7 to 13: the encircled energy of the published figure
     # matches the geometric series, molecules included, not the aerosol-only
     # series (0.41 against 0.61 of the flux within 1 km at 560 nm).
-    figure14)
-        python "$FIGS/figures/figure7_17.py" \
-            --figure figure14 \
+    figure12)
+        python "$FIGS/figures/figure5_15.py" \
+            --figure figure12 \
             --aot 0.4 \
             --rh 50.0 --h 0.0 --wl 560.0 --href 1.0 2.0 4.0 \
             --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
             --species sulphate
         ;;
     # Sweep of the ground elevation.
-    figure15)
-        python "$FIGS/figures/figure7_17.py" \
-            --figure figure15 \
+    figure13)
+        python "$FIGS/figures/figure5_15.py" \
+            --figure figure13 \
             --aot 0.4 \
             --rh 50.0 --h 0.0 1.5 3.0 --wl 560.0 --href 2.0 \
             --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
             --species sulphate
         ;;
     # Sweep of the viewing zenith angle.
-    figure16)
-        python "$FIGS/figures/figure7_17.py" \
-            --figure figure16 \
+    figure14)
+        python "$FIGS/figures/figure5_15.py" \
+            --figure figure14 \
             --aot 0.4 \
             --rh 50.0 --h 0.0 --wl 560.0 --href 2.0 \
             --sza 40.0 --vza 0.0 8.0 16.0 --saa 0.0 --vaa 0.0 \
             --species sulphate
         ;;
     # Sweep of the solar zenith angle.
-    figure17)
-        python "$FIGS/figures/figure7_17.py" \
-            --figure figure17 \
+    figure15)
+        python "$FIGS/figures/figure5_15.py" \
+            --figure figure15 \
             --aot 0.4 \
             --rh 50.0 --h 0.0 --wl 560.0 --href 2.0 \
             --sza 0.0 40.0 80.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
@@ -139,14 +140,14 @@ run_figure() {
     # supports the statement of Section 3.2.2 that the dependency on the
     # ground elevation grows as the AOT drops below 0.1.
     elevation_low_aot)
-        python "$FIGS/figures/figure7_17.py" \
+        python "$FIGS/figures/figure5_15.py" \
             --figure elevation_low_aot \
             --aot 0.05 \
             --rh 50.0 --h 0.0 1.5 3.0 --wl 560.0 --href 2.0 \
             --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
             --species sulphate
         ;;
-    figures22-23) python "$FIGS/figures/figures22-23.py" ;;
+    figures20-21) python "$FIGS/figures/figures20-21.py" ;;
     table_aot_sensitivity)
         python "$FIGS/reviews/table_aot_sensitivity.py" \
             --aot-ref 0.4 --aot-delta 0.2 \
@@ -163,10 +164,10 @@ run_figure() {
 }
 
 ALL_FIGURES=(
-    figure2 figure3 figure4 figure5
-    figure7 figure8 figure9 figure10 figure11 figure12 figure13
-    figure14 figure15 figure16 figure17
-    figures22-23
+    figure2 figure3
+    figure5 figure6 figure7 figure8 figure9 figure10 figure11
+    figure12 figure13 figure14 figure15
+    figures20-21
     table_aot_sensitivity
 )
 

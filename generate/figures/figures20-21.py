@@ -109,7 +109,7 @@ def scatter_figure(figs_dir: Path) -> None:
         ax.legend(fontsize=font(10 / 12), loc="lower right", framealpha=0.9)
 
     fig.tight_layout()
-    save(fig, "figure22", figs_dir)
+    save(fig, "figure20", figs_dir)
 
 
 def improvement_figure(figs_dir: Path) -> None:
@@ -141,7 +141,7 @@ def improvement_figure(figs_dir: Path) -> None:
     ax.legend(fontsize=font(10 / 12), framealpha=0.9)
 
     fig.tight_layout()
-    save(fig, "figure23", figs_dir)
+    save(fig, "figure21", figs_dir)
 
 
 def main() -> None:

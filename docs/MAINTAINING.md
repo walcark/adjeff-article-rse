@@ -18,10 +18,10 @@ adjeff prints nothing until asked, so the figure scripts ask on your
 behalf. Every one of them takes:
 
 ```bash
-./makefig figure4                                        # info, the default
-python generate/figures/figure4.py --log-level debug     # + cache, atmospheres
-python generate/figures/figure4.py --log-level warning   # only what went wrong
-python generate/figures/figure4.py --log-json            # one JSON object a line
+./makefig figure2                                        # info, the default
+python generate/figures/figure2.py --log-level debug     # + cache, atmospheres
+python generate/figures/figure2.py --log-level warning   # only what went wrong
+python generate/figures/figure2.py --log-json            # one JSON object a line
 ```
 
 At `info` you get, for each module, what it is about to run and what it

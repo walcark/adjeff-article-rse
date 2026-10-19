@@ -37,27 +37,34 @@ Figures land in `results/figures/`, tables in `results/tables/`.
 
 | `./makefig` | What it shows | Script |
 |---|---|---|
-| `figure2` | loss landscape of the generalised Gaussian PSF, four training sets | `figures/figure2.py` |
-| `figure3` | radial RMSE against encircled-energy radius | `figures/figure3.py` |
-| `figure4` | surface reflectance, generalised Gaussian PSF against Gauss-330 | `figures/figure4.py` |
-| `figure5` | the same, with the King PSF | `figures/figure5.py` |
-| `figure7` to `figure10` | PSF against aerosol optical thickness: black carbon, sulphate, sulphate at 95 % humidity, sea salt | `figures/figure7_17.py` |
-| `figure11` to `figure13` | PSF against wavelength, one species each | `figures/figure7_17.py` |
-| `figure14` | PSF against the aerosol scale height | `figures/figure7_17.py` |
-| `figure15` | PSF against the ground elevation | `figures/figure7_17.py` |
-| `figure16` | PSF against the viewing zenith angle | `figures/figure7_17.py` |
-| `figure17` | PSF against the solar zenith angle | `figures/figure7_17.py` |
-| `figure19` | reflectance transect across the Cairo tile, with and without correction | `figures/figure19.py` |
-| `figures22-23` | King PSF on real Sentinel-2 data, scatter and RMSE gain | `figures/figures22-23.py` |
+| `figure2` | surface reflectance, generalised Gaussian PSF against Gauss-330 | `figures/figure2.py` |
+| `figure3` | the same, with the King PSF | `figures/figure3.py` |
+| `figure5` to `figure8` | PSF against aerosol optical thickness: black carbon, sulphate, sulphate at 95 % humidity, sea salt | `figures/figure5_15.py` |
+| `figure9` to `figure11` | PSF against wavelength, one species each | `figures/figure5_15.py` |
+| `figure12` | PSF against the aerosol scale height | `figures/figure5_15.py` |
+| `figure13` | PSF against the ground elevation | `figures/figure5_15.py` |
+| `figure14` | PSF against the viewing zenith angle | `figures/figure5_15.py` |
+| `figure15` | PSF against the solar zenith angle | `figures/figure5_15.py` |
+| `figures20-21` | King PSF on real Sentinel-2 data, scatter and RMSE gain | `figures/figures20-21.py` |
 | `table_aot_sensitivity` | what a 0.2 error on the AOT costs, per band, answering a reviewer | `reviews/table_aot_sensitivity.py` |
 
-**The target names are the manuscript's file names, which run ahead of the
-printed figure numbers**, and two of them need a shift of their own. The
-header of `makefig` says which, and is the reference.
+**A target is the number the article prints**: `figure5` builds Fig. 5. The
+header of `makefig` lists what is missing from the table, the figures built
+outside this repository among them.
 
-One more target is not a figure of the article: `elevation_low_aot`
-supports the statement of section 3.2.2 that the elevation dependency
-grows as the AOT drops below 0.1.
+`figure17`, the Cairo reflectance transect, is here but takes a MAJA product
+and a DEM that are not shipped, so it is run by hand:
+
+```bash
+python generate/figures/figure17.py \
+    --product-path /path/to/SENTINEL2A_..._L2A_T36RVV_.../ \
+    --mnt-path /path/to/DEM
+```
+
+Three targets are not figures of the article: `loss_landscape` and
+`rmse_vs_encircled_energy` support the choice of the training set, and
+`elevation_low_aot` supports the statement of section 3.2.2 that the
+elevation dependency grows as the AOT drops below 0.1.
 
 ---
 

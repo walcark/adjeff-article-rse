@@ -1,4 +1,4 @@
-"""PSF sensitivity to atmospheric and geometric parameters (figures 7-17).
+"""PSF sensitivity to atmospheric and geometric parameters (figures 5 to 15).
 
 For each value of the swept parameter, a King PSF is optimised on three
 disk training fields (radii 1, 5, 50 km).  The resulting kernels are
@@ -10,7 +10,7 @@ holds.
 
 Usage
 -----
-python figure7_17.py --figure figure7 \\
+python figure5_15.py --figure figure5 \\
     --aot 0.1 0.3 0.5 0.7 \\
     --rh 50.0 --h 0.0 --href 2.0 --wl 560.0 \\
     --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \\
@@ -72,7 +72,7 @@ SPECIES_LABEL = {
 
 SWEEPABLE = list(SWEEP_LABEL)
 
-# Landscapes the kernel is fitted on.  `disks` is what figures 7 to 17
+# Landscapes the kernel is fitted on.  `disks` is what figures 5 to 15
 # were drawn with; `mixed` is the six-landscape set the lookup table uses,
 # which constrains the core and the tail at once.
 TRAINING_SETS = {"disks": disk_scenes, "mixed": mixed_scenes}
@@ -163,7 +163,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
         "--figure",
-        default="figure7_17",
+        default="figure5_15",
         help="Output figure name (default: the script name).",
     )
     parser.add_argument("--aot", nargs="+", type=float, default=[0.4])
