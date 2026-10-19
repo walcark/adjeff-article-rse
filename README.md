@@ -45,6 +45,7 @@ Figures land in `results/figures/`, tables in `results/tables/`.
 | `figure13` | PSF against the ground elevation | `figures/figure5_15.py` |
 | `figure14` | PSF against the viewing zenith angle | `figures/figure5_15.py` |
 | `figure15` | PSF against the solar zenith angle | `figures/figure5_15.py` |
+| `figure17` | reflectance transect across the Cairo tile, with its TOA estimate | `figures/figure17.py` |
 | `figures20-21` | King PSF on real Sentinel-2 data, scatter and RMSE gain | `figures/figures20-21.py` |
 | `figureC1` | loss landscape of the generalised Gaussian PSF, four training sets | `figures/figureC1.py` |
 | `figureC2` | encircled-energy radii against the radial RMSE loss | `figures/figureC2.py` |
@@ -53,15 +54,6 @@ Figures land in `results/figures/`, tables in `results/tables/`.
 **A target is the number the article prints**: `figure5` builds Fig. 5. The
 header of `makefig` lists what is missing from the table, the figures built
 outside this repository among them.
-
-`figure17`, the Cairo reflectance transect, is here but takes a MAJA product
-and a DEM that are not shipped, so it is run by hand:
-
-```bash
-python generate/figures/figure17.py \
-    --product-path /path/to/SENTINEL2A_..._L2A_T36RVV_.../ \
-    --mnt-path /path/to/DEM
-```
 
 `figureC1` and `figureC2` are the two figures of Appendix C, hence their
 names. One target is not a figure of the article at all: `elevation_low_aot`
@@ -80,6 +72,7 @@ Smart-G reads them from.
 | `inputs/smartg_auxdata/acs/` | molecular absorption cross sections |
 | `inputs/smartg_auxdata/atmospheres/` | the AFGL profiles, exponential one included |
 | `inputs/smartg_auxdata/aerosols/OPAC/mixtures/` | optical properties of the eight CAMS aerosol species |
+| `inputs/maja/` | the Cairo scene of figure 17, cut down to what it reads |
 | `inputs/modis/` | the MODIS skylight table and BRDF weights |
 | `inputs/gloria/` | pre-processed GLORIA matchups |
 
@@ -112,6 +105,7 @@ generate/            everything that produces something
 └── smoke.py         checks every script above still runs
 
 inputs/              what the repository needs and does not produce
+├── maja/            the Cairo scene of figure 17, reduced to 8 MB
 ├── modis/           the MODIS skylight table and BRDF weights
 ├── gloria/          pre-processed GLORIA matchups
 └── smartg_auxdata/  the subset of the Smart-G dataset the figures read

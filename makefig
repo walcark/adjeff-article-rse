@@ -3,11 +3,9 @@
 #
 #   bash makefig                     # every target of ALL_FIGURES
 #   bash makefig figure5             # one of them
-#   bash makefig figure17 --product-path DIR --mnt-path DIR
 #
 # figure1, figure4, figure16, figure18 and figure19 are built outside this
-# repository.  figure17 takes a MAJA product and a DEM, so it is not in
-# ALL_FIGURES.  elevation_low_aot is not a figure of the article.
+# repository.  elevation_low_aot is not a figure of the article.
 
 set -euo pipefail
 
@@ -147,6 +145,7 @@ ALL_FIGURES=(
     figureC1 figureC2
     figure5 figure6 figure7 figure8 figure9 figure10 figure11
     figure12 figure13 figure14 figure15
+    figure17
     figures20-21
     table_aot_sensitivity
 )

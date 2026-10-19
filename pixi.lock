@@ -368,6 +368,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/36/c9/94d73e5a01c5b926c3fa2496e97d7a8dc28ed5a77c0b2ed712f1a62e6694/nbclient-0.11.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3b/6f/63d7d386bc29d9a05b00c8f7068e6c4ac3747148c7b99ca84aa8a79fe7e0/pyresample-1.35.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/3b/e4/072bc0d3c6d45d414062a06af7ee81c02a2c12d769c358ec9919f9995ffd/jupyterlab-4.6.4-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/3f/0e/c31ec27b3adaf1eac498ff30282e2ed059b119876548c1f7f330205b0f7e/adjeff-1.2.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/41/45/1a4ed80516f02155c51f51e8cedb3c1902296743db0bbc66608a0db2814f/jsonschema_specifications-2025.9.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/43/5e/21abf578182fb15006a57faf3711a1e659e29d600d19b6e557eae908c81d/python_discovery-1.6.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/43/99/3ec6335ded5b88c2f7ed25c56ffd952546f7ed007ffb1e1539dc3b57015a/userpath-1.9.2-py3-none-any.whl
@@ -455,7 +456,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/e0/f9/0595336914c5619e5f28a1fb793285925a8cd4b432c9da0a987836c7f822/shellingham-1.5.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e1/1b/82f0f0d8858d4432be1af790477edf62aef90324041aa07c57e57bef1af7/cryptography-50.0.1-cp311-abi3-manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/e2/cc/e097523dd85c9cf5d354f78310927f1656c422bd7b2613b2db3e3f9a0f2c/webcolors-25.10.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/e3/7e/0c06aaaa4a732b77623ba7c61393553a8c8fda94ad45c4474f890e32c64e/adjeff-1.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e5/e2/c2e3abf398f80732e58b03be77bde9022550d221dd8781bf586bd4d97cc1/async_lru-2.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e7/00/3fca040d7cf8a32776d3d81a00c8ee7457e00f80c649f1e4a863c8321ae9/uri_template-1.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e8/3d/1087453384dbde46a8c7f9356eead2c58be8a7bf156bca40243377c85715/more_itertools-11.1.0-py3-none-any.whl
@@ -5619,7 +5619,7 @@ packages:
   - python
   license: MIT
   purls:
-  - pkg:pypi/platformdirs?source=compressed-mapping
+  - pkg:pypi/platformdirs?source=hash-mapping
   run_exports: {}
   size: 27461
   timestamp: 1787881635603
@@ -6018,7 +6018,7 @@ packages:
   - python
   license: MIT
   purls:
-  - pkg:pypi/wcwidth?source=compressed-mapping
+  - pkg:pypi/wcwidth?source=hash-mapping
   run_exports: {}
   size: 146490
   timestamp: 1788174996551
@@ -6653,6 +6653,24 @@ packages:
   - pyyaml-include<3.0 ; extra == 'upgrade-extension'
   - tomli-w<2.0 ; extra == 'upgrade-extension'
   requires_python: '>=3.10'
+- pypi: https://files.pythonhosted.org/packages/3f/0e/c31ec27b3adaf1eac498ff30282e2ed059b119876548c1f7f330205b0f7e/adjeff-1.2.5-py3-none-any.whl
+  name: adjeff
+  version: 1.2.5
+  sha256: 71f7076574a72c034e23ce2e6088b57410f0da9a3f41ae7c0692a0147ba3eea3
+  requires_dist:
+  - dask>=2024.1.0
+  - joblib>=1.3.0
+  - numpy>=2.0.0
+  - pydantic>=2.12.5
+  - rasterio>=1.3.0
+  - scipy>=1.10.0
+  - structlog>=24.0.0
+  - torch>=2.0.0
+  - tqdm>=4.0.0
+  - xarray>=2026.1.0
+  - xsweep>=0.4.0
+  - zarr>=3.0.0
+  requires_python: '>=3.11,<3.13'
 - pypi: https://files.pythonhosted.org/packages/41/45/1a4ed80516f02155c51f51e8cedb3c1902296743db0bbc66608a0db2814f/jsonschema_specifications-2025.9.1-py3-none-any.whl
   name: jsonschema-specifications
   version: 2025.9.1
@@ -7782,24 +7800,6 @@ packages:
   version: 25.10.0
   sha256: 032c727334856fc0b968f63daa252a1ac93d33db2f5267756623c210e57a4f1d
   requires_python: '>=3.10'
-- pypi: https://files.pythonhosted.org/packages/e3/7e/0c06aaaa4a732b77623ba7c61393553a8c8fda94ad45c4474f890e32c64e/adjeff-1.2.2-py3-none-any.whl
-  name: adjeff
-  version: 1.2.2
-  sha256: 13edebedc59cd0add7eda1821e43a79f153ea41b67d8b229c9264ccd423304b6
-  requires_dist:
-  - dask>=2024.1.0
-  - joblib>=1.3.0
-  - numpy>=2.0.0
-  - pydantic>=2.12.5
-  - rasterio>=1.3.0
-  - scipy>=1.10.0
-  - structlog>=24.0.0
-  - torch>=2.0.0
-  - tqdm>=4.0.0
-  - xarray>=2026.1.0
-  - xsweep>=0.4.0
-  - zarr>=3.0.0
-  requires_python: '>=3.11,<3.13'
 - pypi: https://files.pythonhosted.org/packages/e5/e2/c2e3abf398f80732e58b03be77bde9022550d221dd8781bf586bd4d97cc1/async_lru-2.3.0-py3-none-any.whl
   name: async-lru
   version: 2.3.0

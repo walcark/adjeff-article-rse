@@ -4,13 +4,8 @@ Vertical transect at x=101 km of the Cairo Sentinel-2 tile (2023-06-02),
 comparing the surface reflectance without adjacency correction, with the
 fitted King model, and the resulting forward TOA estimate.
 
-Needs a MAJA L2A product and a DEM, neither shipped with this repository.
-
-Usage
------
-    python figure17.py \\
-        --product-path /path/to/SENTINEL2A_..._L2A_T36RVV_.../ \\
-        --mnt-path /path/to/DEM
+Reads the reduced Cairo product of ``inputs/maja/`` by default; point it
+at a full MAJA product and its DEM to work on another scene.
 """
 
 from __future__ import annotations
@@ -26,7 +21,12 @@ from adjeff.modules.models import Unif2Surface
 from adjeff.utils import CacheStore
 
 from adjeff_article_1.runconfig import parse_run
+from adjeff_article_1.utils import get_inputs_path
 from adjeff_article_1.style import font, save, style_axes, use_article_style
+
+#: The reduced Cairo scene this repository ships.
+PRODUCT = "maja/SENTINEL2A_20230602-084138-448_L2A_T36RVV_C_V1-0"
+MNT = "maja/DEM"
 
 BAND = S2Band.B8A
 RES_KM = 0.12
@@ -39,10 +39,16 @@ def build_parser() -> argparse.ArgumentParser:
     """Return the parser for this script's own options."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
-        "--product-path", type=Path, required=True, help="MAJA L2A product"
+        "--product-path",
+        type=Path,
+        default=get_inputs_path() / PRODUCT,
+        help="MAJA L2A product",
     )
     parser.add_argument(
-        "--mnt-path", type=Path, required=True, help="DEM directory"
+        "--mnt-path",
+        type=Path,
+        default=get_inputs_path() / MNT,
+        help="DEM directory",
     )
     parser.add_argument("--x-km", type=float, default=TRANSECT_X_KM)
     parser.add_argument(
