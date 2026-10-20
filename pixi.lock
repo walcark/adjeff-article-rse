@@ -368,7 +368,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/36/c9/94d73e5a01c5b926c3fa2496e97d7a8dc28ed5a77c0b2ed712f1a62e6694/nbclient-0.11.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3b/6f/63d7d386bc29d9a05b00c8f7068e6c4ac3747148c7b99ca84aa8a79fe7e0/pyresample-1.35.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/3b/e4/072bc0d3c6d45d414062a06af7ee81c02a2c12d769c358ec9919f9995ffd/jupyterlab-4.6.4-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/3f/0e/c31ec27b3adaf1eac498ff30282e2ed059b119876548c1f7f330205b0f7e/adjeff-1.2.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/41/45/1a4ed80516f02155c51f51e8cedb3c1902296743db0bbc66608a0db2814f/jsonschema_specifications-2025.9.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/43/5e/21abf578182fb15006a57faf3711a1e659e29d600d19b6e557eae908c81d/python_discovery-1.6.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/43/99/3ec6335ded5b88c2f7ed25c56ffd952546f7ed007ffb1e1539dc3b57015a/userpath-1.9.2-py3-none-any.whl
@@ -452,6 +451,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/db/bc/83e112abc66cd466c6b83f99118035867cecd41802f8d044638aa78a106e/locket-1.0.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/dc/55/6467fde553886cb293e41538f3a8b4e4fd4688c6df242cf982162d8367fb/python_json_logger-4.2.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/dc/78/be204fb409b59876ef4658710a022794f16f779a3e9e7df654acc38b2104/fiona-1.10.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+      - pypi: https://files.pythonhosted.org/packages/dd/6b/2a92ee41a0f99f02366b57706b981fc78d8d150934a6826df846fa4a36ad/adjeff-1.2.6-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/df/64/ff35eb9e54894cf471ff4716abd3c81eb0a0626869217ce3e6ba4ccf17d7/scipy-1.18.1-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/e0/f9/0595336914c5619e5f28a1fb793285925a8cd4b432c9da0a987836c7f822/shellingham-1.5.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e1/1b/82f0f0d8858d4432be1af790477edf62aef90324041aa07c57e57bef1af7/cryptography-50.0.1-cp311-abi3-manylinux_2_28_x86_64.whl
@@ -6653,24 +6653,6 @@ packages:
   - pyyaml-include<3.0 ; extra == 'upgrade-extension'
   - tomli-w<2.0 ; extra == 'upgrade-extension'
   requires_python: '>=3.10'
-- pypi: https://files.pythonhosted.org/packages/3f/0e/c31ec27b3adaf1eac498ff30282e2ed059b119876548c1f7f330205b0f7e/adjeff-1.2.5-py3-none-any.whl
-  name: adjeff
-  version: 1.2.5
-  sha256: 71f7076574a72c034e23ce2e6088b57410f0da9a3f41ae7c0692a0147ba3eea3
-  requires_dist:
-  - dask>=2024.1.0
-  - joblib>=1.3.0
-  - numpy>=2.0.0
-  - pydantic>=2.12.5
-  - rasterio>=1.3.0
-  - scipy>=1.10.0
-  - structlog>=24.0.0
-  - torch>=2.0.0
-  - tqdm>=4.0.0
-  - xarray>=2026.1.0
-  - xsweep>=0.4.0
-  - zarr>=3.0.0
-  requires_python: '>=3.11,<3.13'
 - pypi: https://files.pythonhosted.org/packages/41/45/1a4ed80516f02155c51f51e8cedb3c1902296743db0bbc66608a0db2814f/jsonschema_specifications-2025.9.1-py3-none-any.whl
   name: jsonschema-specifications
   version: 2025.9.1
@@ -7735,6 +7717,24 @@ packages:
   - pytest-cov ; extra == 'test'
   - pytz ; extra == 'test'
   requires_python: '>=3.8'
+- pypi: https://files.pythonhosted.org/packages/dd/6b/2a92ee41a0f99f02366b57706b981fc78d8d150934a6826df846fa4a36ad/adjeff-1.2.6-py3-none-any.whl
+  name: adjeff
+  version: 1.2.6
+  sha256: ff9c110cadd547969b90610bb8aa433d871da24d6deb7768ef8c07851782a043
+  requires_dist:
+  - dask>=2024.1.0
+  - joblib>=1.3.0
+  - numpy>=2.0.0
+  - pydantic>=2.12.5
+  - rasterio>=1.3.0
+  - scipy>=1.10.0
+  - structlog>=24.0.0
+  - torch>=2.0.0
+  - tqdm>=4.0.0
+  - xarray>=2026.1.0
+  - xsweep>=0.4.0
+  - zarr>=3.0.0
+  requires_python: '>=3.11,<3.13'
 - pypi: https://files.pythonhosted.org/packages/df/64/ff35eb9e54894cf471ff4716abd3c81eb0a0626869217ce3e6ba4ccf17d7/scipy-1.18.1-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
   name: scipy
   version: 1.18.1

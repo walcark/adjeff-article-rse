@@ -21,20 +21,16 @@ from adjeff.modules.models import Unif2Surface
 from adjeff.utils import CacheStore
 
 from adjeff_article_1.runconfig import parse_run
-from adjeff_article_1.utils import get_inputs_path
 from adjeff_article_1.style import font, save, style_axes, use_article_style
+from adjeff_article_1.utils import get_inputs_path
 
-#: The reduced Cairo scene this repository ships.
 PRODUCT = "maja/SENTINEL2A_20230602-084138-448_L2A_T36RVV_C_V1-0"
 MNT = "maja/DEM"
-
 BAND = S2Band.B8A
 RES_KM = 0.12
 N_TRAIN = 1999
 TRANSECT_X_KM = 101.0
 N_BINS = 10
-#: States per Smart-G call.  The default of 64 sends the whole binned
-#: map at once, which needs more VRAM than a 8 GB card has.
 BATCH_SIZE = 8
 
 
@@ -122,7 +118,12 @@ def main() -> None:
     )
 
     scene = apply_psf(
-        scene, psf_king, BAND, psf_type=KingPSF, n=n_eval, res_km=RES_KM,
+        scene,
+        psf_king,
+        BAND,
+        psf_type=KingPSF,
+        n=n_eval,
+        res_km=RES_KM,
         device=run.device,
     )
     scene = Unif2Toa()(scene)
@@ -142,17 +143,25 @@ def main() -> None:
 
     profile = transect("rho_unif")
     ax.plot(
-        *profile, color="green", marker="x", markersize=7, markevery=20,
+        *profile,
+        color="green",
+        marker="x",
+        markersize=7,
+        markevery=20,
         label=r"$\rho_{unif}$, no adjacency effects correction",
         linewidth=2.0,
     )
     ax.plot(
         *transect("rho_s_est"),
         label=r"$\rho_{s}$, adjacency effects correction (King optimized)",
-        color="orange", linewidth=2.0,
+        color="orange",
+        linewidth=2.0,
     )
     ax.plot(
-        *transect("rho_toa"), label=r"$\rho_{toa}$", color="red", linewidth=2.0,
+        *transect("rho_toa"),
+        label=r"$\rho_{toa}$",
+        color="red",
+        linewidth=2.0,
     )
     ax.legend(loc="upper right", fontsize=font())
     ax.grid(alpha=0.7, linestyle="-")
