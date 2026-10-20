@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import itertools
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -130,6 +131,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="discard the slabs already fitted",
     )
+    parser.add_argument(
+        "--keep-cache",
+        action="store_true",
+        help="keep the Smart-G cache of every slab, some 55 GB each",
+    )
     return parser
 
 
@@ -219,6 +225,12 @@ def main() -> None:
                     for name in PARAMETERS
                 }
             ).to_netcdf(path)
+
+            # Nothing downstream reads it: the next slab rebuilds its
+            # config around another band, href or species, so not one
+            # cache key is shared.  Kept, a species fills 2 TB.
+            if not args.keep_cache:
+                shutil.rmtree(run.cache_dir, ignore_errors=True)
 
         missing = [p for p in slabs if not p.is_file()]
         if missing:
