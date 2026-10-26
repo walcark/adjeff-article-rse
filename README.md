@@ -1,4 +1,4 @@
-# adjeff, companion scripts
+# Adjeff - article companion scripts
 
 Companion repository for:
 
