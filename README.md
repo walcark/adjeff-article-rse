@@ -2,24 +2,15 @@
 
 Companion repository for:
 
-> K. Walcarius, M. Moulana, D. Ramon, M. Lassalle, J. Colin and O. Hagolle,
-> *A Revised Model for Atmospheric Adjacency Effect Correction in Optical
-> Satellite Earth Observation Images*, Remote Sensing of Environment,
-> submitted.
+> K. Walcarius, M. Moulana, D. Ramon, M. Lassalle, J. Colin and O. Hagolle, *A Revised Model for Atmospheric Adjacency Effect Correction in Optical Satellite Earth Observation Images*, Remote Sensing of Environment, submitted.
 
-Every figure of the article is recomputed here, from the Monte-Carlo radiative
-transfer up to the fitted point spread functions, through
-[adjeff](https://github.com/walcark/Adjeff) 1.2.7 and
-[Smart-G](https://github.com/hygeos/smartg) 2.0. The datasets deposited on the
-[SEDOO portal](https://www.sedoo.fr/donnees-surfaces-continentales/?uuid=a113b52e-7bad-4d41-8733-0f6679da6f1a)
-are built here too.
+Every figure of the article is recomputed here, from the Monte-Carlo radiative transfer up to the fitted point spread functions, through [adjeff](https://github.com/walcark/Adjeff) 1.2.7 and [Smart-G](https://github.com/hygeos/smartg) 2.0. The datasets deposited on the [SEDOO portal](https://www.sedoo.fr/donnees-surfaces-continentales/?uuid=a113b52e-7bad-4d41-8733-0f6679da6f1a) are built here too.
 
 ---
 
 ## Reproduce a figure
 
-A CUDA GPU is required: every figure runs Smart-G. `install_env` brings its own
-pixi and installs the environment, so nothing else is needed.
+A CUDA GPU is required: every figure runs Smart-G. `install_env` brings its own pixi and installs the environment, so nothing else is needed.
 
 ```bash
 git clone https://github.com/walcark/adjeff-article-rse.git
@@ -53,9 +44,7 @@ A target is the number the article prints: `figure5` builds Fig. 5.
 | `figureC1`, `figureC2` | the two figures of Appendix C | `figures/figureC1.py`, `figureC2.py` |
 | `table_aot_sensitivity` | what a 0.2 error on the AOT costs, per band | `reviews/table_aot_sensitivity.py` |
 
-One more target is not a figure of the article: `elevation_low_aot` supports
-section 3.2.2 on the elevation dependency below AOT 0.1. The header of
-`makefig` lists the figures built outside this repository.
+One more target is not a figure of the article: `elevation_low_aot` supports section 3.2.2 on the elevation dependency below AOT 0.1. The header of `makefig` lists the figures built outside this repository.
 
 ---
 
@@ -88,25 +77,13 @@ makefig                 builds one figure or all of them
 install_env             installs pixi and the environment
 ```
 
-Nothing is downloaded: `inputs/smartg_auxdata/` holds the subset of the
-[Smart-G dataset](https://github.com/hygeos/smartg) these figures touch, at the
-paths Smart-G reads them from, 6 MB beside the 168 MB of aerosol tables.
+Nothing is downloaded: `inputs/smartg_auxdata/` holds the subset of the [Smart-G dataset](https://github.com/hygeos/smartg) these figures touch, at the paths Smart-G reads them from, 6 MB beside the 168 MB of aerosol tables.
 
-Those aerosol tables came from MOPSMAP through
-[pymopsmap](https://github.com/walcark/pymopsmap);
-`generate/sedoo/build_cams_auxdata.py` documents the grid they are tabulated on,
-and rebuilding them needs the MOPSMAP binary, which reproducing the figures does
-not.
+Those aerosol tables came from MOPSMAP through [pymopsmap](https://github.com/walcark/pymopsmap); `generate/sedoo/build_cams_auxdata.py` documents the grid they are tabulated on, and rebuilding them needs the MOPSMAP binary, which reproducing the figures does not.
 
-`pyproject.toml` is what pixi reads, and any other environment manager can read
-it too. `pixi install -e local` builds adjeff from a sibling checkout of
-`../Adjeff` rather than from PyPI, which is how a change is tried before it is
-released.
+`pyproject.toml` is what pixi reads, and any other environment manager can read it too. `pixi install -e local` builds adjeff from a sibling checkout of `../Adjeff` rather than from PyPI, which is how a change is tried before it is released.
 
-The Smart-G cache sits outside the repository, under `~/.cache/adjeff-article/`:
-it runs to gigabytes and has to survive a reboot.
-[docs/MAINTAINING.md](docs/MAINTAINING.md) says how to move it, and covers the
-rest of what reproducing a figure does not need.
+The Smart-G cache sits outside the repository, under `~/.cache/adjeff-article/`: it runs to gigabytes and has to survive a reboot. [docs/MAINTAINING.md](docs/MAINTAINING.md) says how to move it, and covers the rest of what reproducing a figure does not need.
 
 ## License
 
