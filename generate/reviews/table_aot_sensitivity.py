@@ -1,41 +1,30 @@
 """What a wrong AOT costs the retrieved reflectance.
 
-A first-order estimate of the error a +/-0.2 gap between the tile-mean
-AOT used for the correction and the true local AOT leaves on the surface
-reflectance.
+The correction uses one tile-mean AOT where the true one varies. This
+measures the surface reflectance error a gap of +/-0.2 leaves behind.
 
-One AOT estimate feeds both the 5S scalar terms (``rho_atm``, ``T_up``,
-``T_down``, ``s``) and the shape of the kernel, so a wrong one corrupts
-both.  The error is split into three, all from the same simulations:
+That single estimate feeds both the 5S scalar terms and the shape of the
+kernel, so the error is split in three, from the same simulations:
 
-  - ``eps_total``   both the scalar terms and the kernel use the wrong
-                    tile-mean AOT.  The operational case.
-  - ``eps_scalar``  only the scalar terms are wrong, the kernel matches
-                    the true AOT.  Ordinary atmospheric correction
-                    error, outside the scope of this article.
-  - ``eps_psf``     only the kernel is wrong.  The cost of a single
-                    tile-averaged kernel, which is what this measures.
+  - ``eps_total``   both are wrong.  The operational case.
+  - ``eps_scalar``  only the scalar terms are.  Ordinary atmospheric
+                    correction error, outside this article.
+  - ``eps_psf``     only the kernel is.  What a single tile-averaged
+                    kernel costs, which is the question.
 
-Two columns frame them: ``no_adj_corr``, which is no adjacency
-correction at all, and ``matched``, where nothing is wrong and which is
-therefore the best reachable.  Reading ``eps_psf`` against those two is
-what answers the question, the raw RMSE growing with the aerosol load on
-its own.
+Two columns frame them: ``no_adj_corr``, no adjacency correction at all,
+and ``matched``, nothing wrong and therefore the best reachable. Reading
+``eps_psf`` against those two is what answers the question, since the
+raw RMSE grows with the aerosol load on its own.
 
-Errors are radial RMSE (``Metric.RMSE_RAD``, masked on ``rho_unif``)
-averaged over the six training landscapes of section 2.3.1, as in tables
-2 and 3.  Those landscapes span ``rho_s`` in [0, 1], so the metric's
-normalisation is close to one and the values read directly as surface
-reflectance.
+Errors are radial RMSE over the six landscapes of section 2.3.1, as in
+tables 2 and 3. Those span ``rho_s`` in [0, 1], so the values read
+directly as surface reflectance.
 
 Usage
 -----
-python table_aot_sensitivity.py \\
-    --aot-ref 0.4 --aot-delta 0.2 \\
-    --wl 490 560 665 865 1610 2190 \\
-    --rh 50.0 --h 0.0 --href 2.0 \\
-    --sza 40.0 --vza 0.0 --saa 0.0 --vaa 0.0 \\
-    --species sulphate
+python table_aot_sensitivity.py --aot-ref 0.4 --aot-delta 0.2 \
+    --wl 490 560 665 865 1610 2190 --species sulphate
 """
 
 import argparse
@@ -103,10 +92,10 @@ def parse_species(text: str) -> dict[str, float]:
 def build_landscapes(
     band: SensorBand, res_km: float, n: int
 ) -> list[ImageDict]:
-    """Return the 6 training landscapes of Section 2.3.1.
-
-    Three Gaussian landscapes with sigma = 1, 5, 50 km followed by three
-    disk landscapes with r = 1, 5, 50 km, all spanning rho_s in [0, 1].
+    """    Return the six training landscapes of section 2.3.1.
+    
+    Gaussians of sigma 1, 5 and 50 km, then disks of radius 1, 5 and 50 km,
+    all spanning rho_s in [0, 1].
     """
     common = dict(res_km=res_km, rho_min=0.0, rho_max=1.0, bands=[band], n=n)
     gauss = [gaussian_image_dict(sigma=s, **common) for s in SCALES_KM]
@@ -121,18 +110,11 @@ def build_landscapes(
 def at_aot(
     obj: xr.Dataset | xr.DataArray, aot: float
 ) -> xr.Dataset | xr.DataArray:
-    """Return *obj* at one aerosol load, without its unswept dimensions.
-
-    The aot label is dropped on purpose: this table mixes, in one
-    correction, the TOA reflectance measured at one load with the 5S
-    scalar terms at another and the kernel at a third.  Keeping three
-    conflicting labels would make them impossible to combine, which is
-    what xarray tells you with a MergeError.
-
-    What remains to peel are the parameters a scalar configuration
-    turned into dimensions of length one.  The ``.adjeff`` accessor is
-    registered on DataArray only, so a Dataset is squeezed the plain
-    way.
+    """    Return *obj* at one aerosol load, without its unswept dimensions.
+    
+    The aot label is dropped on purpose: one correction here mixes the TOA
+    reflectance at one load with the scalar terms at another and the kernel
+    at a third, and three conflicting labels cannot be combined.
     """
     picked = obj.sel(aot=aot, method="nearest", drop=True)
     if isinstance(picked, xr.Dataset):

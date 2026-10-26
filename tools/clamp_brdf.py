@@ -1,29 +1,11 @@
 """Turn the Ross-Li BRDF clamp in Smart-G's CUDA kernel on and off.
 
-The Ross-Li fit MODIS distributes is not constrained positive.  For a
+The Ross-Li fit MODIS distributes is not constrained positive. For a
 strongly anisotropic surface, ``1 + k1p F1 + k2p F2`` goes negative at
-grazing view, where ``F1`` diverges as ``-sec(theta)``.  Smart-G does not
+grazing view, where ``F1`` diverges as ``-sec(theta)``. Smart-G does not
 clip it, so those photons carry a negative weight, and they are the ones
 that leave the ground almost horizontally, which is to say the ones that
 feed the far-field adjacency signal this study measures.
-
-Measured over the hemisphere at a sun zenith of 40 degrees, that region
-carries 0.011 % of the upward flux for Libya 4, 0.36 % for Konza and
-0.79 % for Skukuza, with weights reaching -2500 against +1 for a normal
-photon.  Whether that is enough to explain Skukuza's degraded retrieval,
-or whether the degradation is a genuine cost of the Lambertian
-assumption, is what clamping is meant to separate.
-
-Why a script rather than an edit
---------------------------------
-``device.cu`` lives inside the pixi environment, which pixi owns: an
-install or a lock change can rewrite it without warning.  So the patch is
-applied and removed by one command that refuses to act on a file it does
-not recognise, and the original is kept outside the tree.
-
-``pycuda`` reads and compiles ``device.cu`` on every run, keyed on the
-source hash, so a change takes effect at the next run and needs no build
-step.
 
 Usage
 -----

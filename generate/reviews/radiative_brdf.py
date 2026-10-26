@@ -1,19 +1,19 @@
 """What a Lambertian surface costs on ``tdif_up`` and ``sph_alb``.
 
 Answer T1 applies a kernel fitted on Lambertian landscapes to scenes
-simulated with a Ross-Li BRDF.  Two of the six radiative terms depend on
+simulated with a Ross-Li BRDF. Two of the six radiative terms depend on
 the surface and were left Lambertian anyway; the four others never touch
-the ground.  This measures how wrong that is, before any kernel is
+the ground. This measures how wrong that is, before any kernel is
 involved.
 
-Both terms are drawn over an aerosol sweep, for every sun zenith angle
-and every surface, once through the Lambertian samplers and once through
-their BRDF variants.  Each surface is rescaled so that the sensor sees
-the same reflectance from all four: only what leaves towards the
-hemisphere differs.
+Both terms are swept over the aerosol load, for every sun angle and
+every surface, once through the Lambertian samplers and once through
+their BRDF variants. Each surface is rescaled so the sensor sees the
+same reflectance from all four: only what leaves towards the sky
+differs.
 
 The Lambertian case runs twice, through both sampler families, the
-second at ``k1p = k2p = 0``.  They must agree, and their gap is the
+second at ``k1p = k2p = 0``. They must agree, and their gap is the
 Monte-Carlo floor every other number has to clear.
 
 Usage
@@ -77,13 +77,7 @@ def atmosphere(aot: np.ndarray, args: argparse.Namespace) -> AtmoConfig:
 
 
 def weights(row: pd.Series | None, sza: float, args: argparse.Namespace) -> dict:
-    """Return the RTLS weights, rescaled to a unit BRF in the view direction.
-
-    ``k0`` carries the rescaling the landscapes already get, so that the
-    four surfaces send the same reflectance to the sensor and differ only
-    in what they send to the hemisphere.  A Lambertian surface is the
-    degenerate case with no kernel at all.
-    """
+    """Return the RTLS weights, rescaled to a unit BRF towards the sensor."""
     if row is None:
         return {"k0": 1.0, "k1p": 0.0, "k2p": 0.0}
     raa = args.saa - args.vaa
@@ -121,10 +115,9 @@ def sample_lambertian(
     args: argparse.Namespace,
     cache: CacheStore,
 ) -> dict[str, np.ndarray]:
-    """Return the same two quantities from the Lambertian samplers.
-
-    The reference the study has always used, and the one the BRDF path at
-    ``k1p = k2p = 0`` has to reproduce.
+    """    Return the same two quantities from the Lambertian samplers.
+    
+    The reference, which the BRDF path at ``k1p = k2p = 0`` has to match.
     """
     common = dict(
         atmo_config=atmosphere(aot, args),
@@ -191,12 +184,10 @@ def _rows(sza, aot, surface, quantity, values) -> list[dict]:
 
 
 def draw(table: pd.DataFrame, args: argparse.Namespace, path: Path) -> None:
-    """Draw one column per quantity, one row per sun zenith angle.
-
-    The two quantities never share an axis: they are different scales, so
-    they get their own column rather than a second y-axis.  Rows share
-    the aerosol axis, columns share their own scale, so a surface can be
-    followed down a column and across a row.
+    """    Draw one column per quantity, one row per sun angle.
+    
+    The two quantities are on different scales, so each gets a column rather
+    than a second y-axis.
     """
     use_article_style()
     angles = sorted(table["sza"].unique())
@@ -259,12 +250,7 @@ def draw(table: pd.DataFrame, args: argparse.Namespace, path: Path) -> None:
 
 
 def report(table: pd.DataFrame) -> None:
-    """Print the Monte-Carlo floor, then the departure of each surface.
-
-    The floor is the gap between the two ways of computing the Lambertian
-    case.  A surface whose departure does not clear it has not been shown
-    to differ from Lambertian at this photon count.
-    """
+    """Print the Monte-Carlo floor, then the departure of each surface."""
     wide = table.pivot_table(
         index=["sza", "quantity", "aot"], columns="surface", values="value"
     )

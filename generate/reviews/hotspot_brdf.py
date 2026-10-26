@@ -1,15 +1,13 @@
-"""The three BRDF shapes at three sun zenith angles (answer T1).
+"""The three BRDF shapes at three sun angles (answer T1).
 
 Nothing is simulated: the coefficients come from the cached MODIS
-ensemble and only the angular shapes are drawn.  It is the companion
-figure to the table of `hotspot.py`, kept apart so that redrawing it
-costs seconds.
+ensemble and only the shapes are drawn. Companion to the table of
+`hotspot.py`, kept apart so redrawing costs seconds.
 
-Each curve is divided by its own value in the viewing direction, which
-is what the simulation does to the landscapes: the sensor sees the same
-reflectance from every surface, and only what leaves towards the
-hemisphere differs.  All four therefore pass through one at nadir, and
-their spread away from it is the effect under study.
+Each curve is divided by its own value towards the sensor, which is what
+the simulation does to the landscapes: every surface looks the same to
+the sensor, and only what leaves towards the sky differs. All four
+therefore pass through one at nadir, and their spread is the effect.
 
 Usage
 -----
@@ -33,11 +31,8 @@ from adjeff_article_1.style import font, style_axes, use_article_style
 
 OUTPUT = REPO_ROOT / "results" / "tables"
 
-#: Shown in this order, darkest surface first, so the legend reads as a
-#: gradient of anisotropy rather than as the order of a CSV.
 ORDER = ("libya4-desert", "konza-grassland", "skukuza-savanna")
 
-#: Names as the answer spells them.
 LABELS = {
     "libya4-desert": "Libya-4, desert",
     "konza-grassland": "Konza, grassland",
@@ -64,8 +59,11 @@ def draw(frame: pd.DataFrame, angles: list[float], clamp: bool, path: Path) -> N
     raa = np.where(vza < 0.0, 180.0, 0.0)
 
     fig, axes = plt.subplots(
-        1, len(angles), figsize=(2.5 * len(angles) + 0.6, 2.9),
-        sharey=True, layout="constrained",
+        1,
+        len(angles),
+        figsize=(2.5 * len(angles) + 0.6, 2.9),
+        sharey=True,
+        layout="constrained",
     )
     axes = np.atleast_1d(axes)
 
@@ -75,9 +73,7 @@ def draw(frame: pd.DataFrame, angles: list[float], clamp: bool, path: Path) -> N
         ax.axvline(sza, color="0.8", linewidth=0.8, zorder=0)
         for row in frame.itertuples():
             at_sensor = float(shape_of(sza, 0.0, 0.0, row.k1p, row.k2p, clamp))
-            shape = (
-                shape_of(sza, np.abs(vza), raa, row.k1p, row.k2p, clamp) / at_sensor
-            )
+            shape = shape_of(sza, np.abs(vza), raa, row.k1p, row.k2p, clamp) / at_sensor
             (line,) = ax.plot(vza, shape, linewidth=1.3, zorder=2)
             if index == 0:
                 handles.append(line)
@@ -87,8 +83,9 @@ def draw(frame: pd.DataFrame, angles: list[float], clamp: bool, path: Path) -> N
         ax.set_xticks([-80, -40, 0, 40, 80])
         style_axes(ax)
 
-    axes[0].set_ylabel("BRDF shape, relative\nto the viewing direction",
-                       fontsize=font(11 / 12))
+    axes[0].set_ylabel(
+        "BRDF shape, relative\nto the viewing direction", fontsize=font(11 / 12)
+    )
 
     lambertian = plt.Line2D(
         [], [], color="0.45", linestyle="--", linewidth=1.0, label="Lambertian"
@@ -112,16 +109,21 @@ def main() -> None:
     """Read the coefficients and draw the panels."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
-        "--sza", type=float, nargs="+", default=[10.0, 40.0, 60.0],
+        "--sza",
+        type=float,
+        nargs="+",
+        default=[10.0, 40.0, 60.0],
         help="sun zenith angles, one panel each",
     )
     parser.add_argument(
-        "--sites-csv", type=Path,
+        "--sites-csv",
+        type=Path,
         default=OUTPUT / "hotspot_mcd43a1_sites.csv",
         help="cached MODIS ensemble",
     )
     parser.add_argument(
-        "--no-clamp", action="store_true",
+        "--no-clamp",
+        action="store_true",
         help="draw the raw Ross-Li fit, negative tail included",
     )
     parser.add_argument("--out", type=Path, default=OUTPUT / "hotspot_brdf.png")

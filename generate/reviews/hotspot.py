@@ -1,40 +1,31 @@
 """What a Lambertian surface costs, on three real ones (answer T1).
 
 The King kernel of the article is fitted on Lambertian landscapes, then
-applied unchanged to scenes simulated with a Ross-Li Thick BRDF taken
-from MODIS MCD43A1.  Its retrieval error against the Lambertian
-reference is what the assumption costs.
+applied unchanged to scenes simulated with a Ross-Li BRDF from MODIS
+MCD43A1.  Its error against the Lambertian reference is what the
+assumption costs.
 
-The three surfaces sit on either side of Lambertian rather than all on
-one side, and all three keep under 1 % of their upward flux where the
-Ross-Li fit turns negative:
+The three sites sit on either side of Lambertian, and all three keep
+under 1 % of their upward flux where the Ross-Li fit turns negative:
 
-===================== ======= ============== ===================
-site                  a       BRF negative   negative flux
-===================== ======= ============== ===================
-skukuza-savanna       0.985   83 deg         0.79 %
-libya4-desert         1.015   90 deg         0.012 %
-konza-grassland       1.056   86 deg         0.36 %
-===================== ======= ============== ===================
+    site               a       BRF negative   negative flux
+    skukuza-savanna    0.985   83 deg         0.79 %
+    libya4-desert      1.015   90 deg         0.012 %
+    konza-grassland    1.056   86 deg         0.36 %
 
-``a = albedo / BRF(view)`` is one for a Lambertian surface and below one
-when the surface is brighter towards the sensor than towards the
-hemisphere.  The albedo is the blue-sky one, the surface being lit by a
-direct beam and a diffuse sky.
+``a = albedo / BRF(view)`` is one for a Lambertian surface, below one
+when the surface is brighter towards the sensor than towards the sky.
 
-At 40 degrees, the manuscript's geometry, the cost is smallest for two
-of the three.  Sun zeniths of 20 and 60 are run as well, and they settle
-what 40 leaves open: the cost follows the *sign* of ``a - 1``, not its
-size.  Konza departs nearly four times further than Skukuza and degrades
-four times less.
+Three sun angles are run, which is what settles the reading: the cost
+follows the sign of ``a - 1``, not its size.  Konza departs nearly four
+times further than Skukuza and degrades four times less.
 
-``disk1`` and ``disk5`` are reported and set aside: their error is the
-edge the deconvolution cannot resolve, twenty times the adjacency error,
-and it tells the surfaces apart not at all.  See ``UNINFORMATIVE``.
+``disk1`` and ``disk5`` are reported and ignored: their error is the
+edge the deconvolution cannot resolve, twenty times the adjacency
+error, and it tells the surfaces apart not at all.  See ``UNINFORMATIVE``.
 
 Outputs carry the geometry and the clamp mode in their names, so runs
-can be compared instead of overwriting one another: the coefficients as
-a CSV, the angular shapes as a figure, the retrieval error as a table.
+do not overwrite one another.
 
 Usage
 -----
@@ -43,6 +34,7 @@ python hotspot.py --sza 40             # the manuscript's geometry
 python hotspot.py --sza 20 --clamp     # all surfaces below Lambertian
 python hotspot.py --sza 60 --clamp     # all above
 """
+
 from __future__ import annotations
 
 import argparse
@@ -54,6 +46,21 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import xarray as xr
+from adjeff.analysis import rmse
+from adjeff.api import make_full_config, make_model, run_forward_pipeline
+from adjeff.core import (
+    ImageDict,
+    KingPSF,
+    SensorBand,
+    disk_image_dict,
+    gaussian_image_dict,
+    psf_kernel,
+)
+from adjeff.modules.models import Unif2Surface
+from adjeff.modules.samplers import RADIATIVE_VARS, RadiativePipeline
+from adjeff.optim import Loss, Metric, TrainingImages, fit
+from adjeff.utils import CacheStore
+
 from adjeff_article_1.appeears import fetch_mcd43a1 as appeears_fetch
 from adjeff_article_1.correction import correct
 from adjeff_article_1.credentials import (
@@ -76,50 +83,25 @@ from adjeff_article_1.runconfig import (
 from adjeff_article_1.skylight import MODIS_BANDS, blue_sky, skylight_fraction
 from adjeff_article_1.utils import get_cache_path
 
-from adjeff.analysis import rmse
-from adjeff.api import make_full_config, make_model, run_forward_pipeline
-from adjeff.core import (
-    ImageDict,
-    KingPSF,
-    SensorBand,
-    disk_image_dict,
-    gaussian_image_dict,
-    psf_kernel,
-)
-from adjeff.modules.models import Unif2Surface
-from adjeff.modules.samplers import RADIATIVE_VARS, RadiativePipeline
-from adjeff.optim import Loss, Metric, TrainingImages, fit
-from adjeff.utils import CacheStore
-
-#: Coordinates only: every BRDF coefficient comes from MCD43A1.
 SITES: tuple[tuple[str, float, float], ...] = (
     ("konza-grassland", 39.0824, -96.5603),
     ("skukuza-savanna", -25.0197, 31.4969),
     ("libya4-desert", 28.5500, 23.3900),
 )
 
-#: The three surfaces, chosen to bracket Lambertian while keeping under
-#: 1 % of their upward flux where the Ross-Li fit turns negative.
 CHOSEN = ("skukuza-savanna", "libya4-desert", "konza-grassland")
 
-#: Landscapes whose error comes from a one-pixel edge rather than from
-#: adjacency, so they discriminate no surface: 20 times the Lambertian
-#: error of a Gaussian of the same size, and 15 % run to run.  Kept in
-#: the training set, excluded from the ratios.
 UNINFORMATIVE = ("disk1", "disk5")
 
 OUTPUT = REPO_ROOT / "results" / "tables"
 
 
 def load_ensemble(args: argparse.Namespace) -> pd.DataFrame:
-    """Return the MCD43A1 ensemble, from the cache or from the service.
-
-    The CSV is the supported hand-off point: any tool able to export
-    ``site``, ``f_iso``, ``f_geo`` and ``f_vol`` (AppEEARS, Earth Engine,
-    a local granule read) can feed this study without going through a web
-    service at all.  `inputs/modis/mcd43a1_sites.csv` is the versioned
-    one, so a fresh clone needs no Earthdata account; `--refresh-sites`
-    fetches again and overwrites it, which git then shows.
+    """    Return the MCD43A1 coefficients, from the CSV or from AppEEARS.
+    
+    `inputs/modis/mcd43a1_sites.csv` is versioned, so a fresh clone needs no
+    Earthdata account.  Any CSV with `site`, `f_iso`, `f_geo` and `f_vol`
+    does; `--refresh-sites` fetches and overwrites it.
     """
     path = Path(args.sites_csv)
     if path.exists() and not args.refresh_sites:
@@ -164,36 +146,22 @@ def _fetch_ensemble(args: argparse.Namespace) -> pd.DataFrame:
     return frame
 
 
-
-
 @contextlib.contextmanager
 def rtls_surface(k1p: float, k2p: float) -> Iterator[None]:
-    """Make ``SurfaceFactory.surface`` return an ``RTLSSurface``.
-
-    ``k0`` is read from the landscape itself rather than fixed, because
-    Smart-G applies the BRDF factor to the *whole* ``ENV=2``
-    expression::
-
+    """    Make ``SurfaceFactory.surface`` return an ``RTLSSurface``.
+    
+    ``k0`` comes from the landscape rather than being fixed, because Smart-G
+    applies the BRDF factor to the whole ``ENV=2`` expression::
+    
         weight *= BRDF * (gauss * (alb_surface - alb_env) + alb_env)
-
-    Both ``alb_surface`` (this object) and ``alb_env`` (the Environment,
-    which is left untouched) must therefore already carry the ``1 /
-    rtls_shape`` normalisation, otherwise a landscape with a non-zero
-    background stops being reproduced: a flat field would pick up a
-    spurious Gaussian modulation from ``alb_surface != alb_env``.  This
-    is handled upstream by :func:`scaled_landscape`.
-
-    Notes
-    -----
-    Smart-G 1.2.0 raised ``TypeError`` on the ``k0=``/``k1p=``/``k2p=``
-    keywords, writing into the tuple default they were given, so the
-    coefficients used to travel through ``kp``.  2.0 fixed them and
-    deprecated ``kp`` in turn.
+    
+    Both albedos must therefore already carry the ``1 / rtls_shape``
+    normalisation, which :func:`scaled_landscape` does, or a flat field
+    picks up a spurious Gaussian modulation.
     """
+    from adjeff.atmosphere import SurfaceFactory
     from smartg.albedo import AlbedoCst
     from smartg.surface import RTLSSurface
-
-    from adjeff.atmosphere import SurfaceFactory
 
     original = SurfaceFactory.surface
 
@@ -217,12 +185,10 @@ def train(
     band: SensorBand,
     run: RunConfig,
 ) -> tuple[xr.DataArray, dict[str, float]]:
-    """Optimise a single King PSF over the whole training set.
-
-    This is the operational kernel of the article: **one** kernel fitted
-    jointly on the six Lambertian landscapes, not one kernel per
-    landscape.  It is the only kernel this study uses; the whole point
-    is to apply it, unchanged, to surfaces it was not trained for.
+    """    Fit one King PSF over the whole training set.
+    
+    One kernel for the six landscapes, not one each: the point is to apply
+    it unchanged to surfaces it was never trained for.
     """
     images = [img for _, img in scenes]
 
@@ -244,8 +210,6 @@ def train(
     kernel = psf_kernel(tree, band).squeeze(drop=True)
     params = model.psf_params(band)
 
-    # Released before returning: a second training in the same process
-    # would otherwise add to the peak of six 3999x3999 landscapes.
     del model, tree
     if run.device.startswith("cuda"):
         import torch
@@ -256,20 +220,7 @@ def train(
 
 
 def selected_surfaces(args: argparse.Namespace) -> pd.DataFrame:
-    """Return the three sites, with their weights and diagnostics.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Parsed command line, carrying the geometry and the ensemble
-        location.
-
-    Returns
-    -------
-    pd.DataFrame
-        One row per site, ordered by anisotropy, with ``k1p``, ``k2p``,
-        ``shape_view``, ``dhr``, ``a`` and ``brf_neg_vza``.
-    """
+    """Return the three sites, ordered by anisotropy, with their diagnostics."""
     frame = load_ensemble(args)
     frame = frame[frame["site"].isin(CHOSEN)].copy()
     missing = set(CHOSEN) - set(frame["site"])
@@ -302,8 +253,12 @@ def selected_surfaces(args: argparse.Namespace) -> pd.DataFrame:
     )
     frame["albedo"] = [
         blue_sky(
-            dhr, bhr, args.sza, args.aot,
-            band=args.modis_band, aerosol=args.aerosol,
+            dhr,
+            bhr,
+            args.sza,
+            args.aot,
+            band=args.modis_band,
+            aerosol=args.aerosol,
         )
         for dhr, bhr in zip(frame["dhr"], frame["bhr"], strict=True)
     ]
@@ -354,15 +309,7 @@ def landscapes(
     run: RunConfig,
     scale: float = 1.0,
 ) -> list[tuple[str, ImageDict]]:
-    """Return the six training landscapes, optionally rescaled.
-
-    Three Gaussians and three disks, as in Section 2.3.1.  *scale*
-    multiplies both reflectance levels so that the field the sensor
-    *observes* is the same whatever the surface's angular shape: only
-    what leaves towards the hemisphere differs, which is the one thing
-    under test.  The truth to compare against therefore stays the
-    unscaled landscape.
-    """
+    """Return the six training landscapes, optionally rescaled."""
     common = {
         "res_km": run.res_km,
         "rho_min": 0.0,
@@ -392,13 +339,7 @@ def simulate(
     run: RunConfig,
     frame: pd.DataFrame,
 ) -> tuple[list[tuple[str, ImageDict]], dict[str, list[tuple[str, ImageDict]]]]:
-    """Run the forward pipeline once Lambertian and once per surface.
-
-    Returns
-    -------
-    tuple
-        The Lambertian scenes, and the RTLS scenes keyed by site name.
-    """
+    """Return the Lambertian scenes, and the RTLS scenes keyed by site."""
     cfg = make_full_config(
         bands=[band],
         aot=args.aot,
@@ -413,9 +354,7 @@ def simulate(
     )
     pipeline = {"nr": args.nr, "n_ph": run.n_ph}
 
-    # Shared between clamped and unclamped modes: the clamp cannot touch
-    # a surface with no BRDF, and recomputing it cost 5.6 % of noise on a
-    # quantity identical by construction.
+    # Shared between clamped and unclamped modes
     print(">>> forward pipeline, Lambertian", flush=True)
     store = CacheStore(lambertian_cache(run))
     lambertian = [
@@ -445,14 +384,7 @@ def simulate(
 
 
 def lambertian_cache(run: RunConfig) -> str:
-    """Return the Lambertian store, shared across clamp modes.
-
-    The cache directory carries a `-clamped` suffix so that a clamped run
-    cannot read an unclamped surface back.  The Lambertian scenes are the
-    one exception: nothing about them depends on the clamp, and giving
-    them one store makes the two runs share a reference rather than two
-    noisy estimates of it.
-    """
+    """Return the Lambertian store, shared across clamp modes."""
     return run.cache_dir.removesuffix("-clamped") + "/lambertian"
 
 
@@ -462,13 +394,7 @@ def brdf_scalars(
     run: RunConfig,
     row: pd.Series,
 ) -> xr.Dataset:
-    """Return the six radiative quantities computed over the RTLS surface.
-
-    Only ``tdif_up`` and ``sph_alb`` change: the four others never see the
-    ground.  They do not depend on the landscape, so one call per surface
-    covers every scene, and the result is merged into a scene whose
-    ``rho_toa`` was simulated over that same surface.
-    """
+    """Return the six radiative quantities computed over the RTLS surface."""
     cfg = make_full_config(
         bands=[band],
         aot=args.aot,
@@ -493,16 +419,7 @@ def brdf_scalars(
 
 
 def _like(new: xr.DataArray, old: xr.DataArray) -> xr.DataArray:
-    """Return *new* carrying the dimensions *old* has, and no others.
-
-    The BRDF samplers sweep ``sza`` where their Lambertian counterparts
-    do not, so ``tdif_up`` and ``sph_alb`` come back with one axis more.
-    The axis is a singleton and changes no value, but ``rho_unif``
-    inherits it and the radial RMSE then reads a differently shaped
-    field: the two arms would be compared on two geometries of the same
-    numbers.  Dropping it is safe only because it is a singleton, which
-    is asserted rather than assumed.
-    """
+    """Return *new* carrying the dimensions *old* has, and no others."""
     extra = [d for d in new.dims if d not in old.dims]
     sizes = {d: new.sizes[d] for d in extra}
     if any(n != 1 for n in sizes.values()):
@@ -523,26 +440,7 @@ def errors(
     scalars: xr.Dataset | None = None,
     deconvolve: bool = True,
 ) -> dict[str, float]:
-    """Return the radial RMSE of the retrieval, per landscape.
-
-    Two axes, and the study is their cross product.  *scalars* replaces
-    the six radiative quantities the inversion uses, which is how the
-    surface the scene was *simulated* over is separated from the surface
-    the correction *assumes*; ``None`` keeps the scene's own, which the
-    forward run computed Lambertian.  *deconvolve* chooses between the
-    trained kernel and no adjacency correction at all, the reference
-    every corrected number has to be read against.
-
-    The mask is the **truth**, not ``rho_unif``.  Masking on the
-    retrieved field makes the metric depend on the very thing it scores:
-    the landscapes have a background of exactly zero, so ``rho_unif``
-    carries a large atom at zero, and a shift of ``1e-5`` lifts the whole
-    field off it and reshuffles the selected pixels.  Measured on a
-    surface that is Lambertian by construction, that alone moved the RMSE
-    by a factor 2.6 while no two values differed by more than
-    ``1.4e-5``.  Scoring two corrections against two different pixel sets
-    compares nothing.
-    """
+    """Return the radial RMSE of the retrieval, per landscape."""
     out: dict[str, float] = {}
     for name, scene in scenes:
         ds = scene[band]
@@ -556,9 +454,6 @@ def errors(
     return out
 
 
-#: The four arms of the study, per surface.  The first word is what the
-#: correction assumes about the surface, the second whether it
-#: deconvolves.
 ARMS = ("lam_nopsf", "lam_psf", "brdf_nopsf", "brdf_psf")
 
 
@@ -568,11 +463,10 @@ def report(
     frame: pd.DataFrame,
     path: Path,
 ) -> pd.DataFrame:
-    """Assemble, print and write the error table.
-
-    *lambertian* and each entry of *rtls* hold one dict per arm of
-    :data:`ARMS`.  The Lambertian scene has no BRDF arm, since assuming
-    the surface it actually has *is* the Lambertian assumption.
+    """    Assemble, print and write the error table.
+    
+    The Lambertian scene has no BRDF arm: assuming the surface it actually
+    has *is* the Lambertian assumption.
     """
     names = list(lambertian["lam_psf"])
     rows = []
@@ -591,6 +485,7 @@ def report(
     print(table.to_string(index=False, float_format=lambda v: f"{v:.6f}"))
 
     informative = [n for n in names if n not in UNINFORMATIVE]
+
     # A mean of ratios, not a ratio of means: the errors span an order
     # of magnitude, so each landscape counts once.
     def mean(numerator: dict[str, float], reference: dict[str, float]) -> float:
@@ -602,10 +497,7 @@ def report(
         f"\n    ({', '.join(UNINFORMATIVE)} set aside: edge-dominated)\n",
         flush=True,
     )
-    print(
-        f"{'surface':<24} {'a':>7} {'PSF gain':>10} "
-        f"{'radiative':>11} {'rest':>7}"
-    )
+    print(f"{'surface':<24} {'a':>7} {'PSF gain':>10} {'radiative':>11} {'rest':>7}")
     print(
         f"{'lambertian':<24} {1.0:7.3f} "
         f"{mean(lambertian['lam_psf'], lambertian['lam_nopsf']):9.2f}x "
@@ -613,13 +505,9 @@ def report(
     )
     for row in frame.itertuples():
         arms = rtls[row.site]
-        # Share of the operational error the Lambertian tdif_up and
-        # sph_alb put there; `a` is the complement.
         rest = mean(arms["brdf_psf"], arms["lam_psf"])
         print(
             f"{row.site:<24} {row.a:7.3f} "
-            # What the Lambertian-trained kernel buys over no adjacency
-            # correction at all, on a surface it was not trained for.
             f"{mean(arms['lam_psf'], arms['lam_nopsf']):9.2f}x "
             f"{1.0 - rest:10.0%} {rest:7.0%}"
         )
@@ -636,7 +524,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--aot", type=float, default=0.4)
     parser.add_argument("--rh", type=float, default=50.0)
     parser.add_argument(
-        "--aerosol", choices=("Continental", "Maritime"), default="Continental",
+        "--aerosol",
+        choices=("Continental", "Maritime"),
+        default="Continental",
         help="atmosphere the skylight fraction is read for",
     )
     parser.add_argument("--h", type=float, default=0.0)
@@ -676,24 +566,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def check_band_agrees(wl_nm: float, modis_band: int) -> None:
-    """Refuse to run when the simulation and the BRDF fit disagree on colour.
-
+    """    Refuse to run when the simulation and the BRDF fit disagree on colour.
+    
     The Ross-Li weights are per band, and so is the skylight fraction.
-    Reading them on one band and simulating on another is a silent
-    error: a desert is far brighter at 858 than at 665 nm, and nothing
-    downstream would say so.
-
-    Parameters
-    ----------
-    wl_nm : float
-        Wavelength the radiative transfer runs at [nm].
-    modis_band : int
-        MODIS band the coefficients are read on.
-
-    Raises
-    ------
-    ValueError
-        When the wavelength falls outside that band's range.
+    Reading them on one band and simulating on another is silent: a desert
+    is far brighter at 858 than at 665 nm, and nothing downstream says so.
     """
     low, high = MODIS_BANDS[modis_band]
     if low <= wl_nm <= high:
@@ -711,20 +588,18 @@ def check_band_agrees(wl_nm: float, modis_band: int) -> None:
 
 
 def check_clamp_agrees(requested: bool) -> None:
-    """Refuse to run when Python and the CUDA kernel disagree.
-
-    A mismatch produces no error and a plausible number: the correction
-    would be judged against a truth simulated for a different surface.
-    It is the one failure this study cannot detect from its own output,
-    so it is checked before anything runs.
+    """    Refuse to run when Python and the CUDA kernel disagree.
+    
+    A mismatch gives no error and a plausible number, the correction being
+    judged against a truth simulated for another surface.  It is the one
+    failure this study cannot see in its own output.
     """
     sys.path.insert(0, str(REPO_ROOT / "tools"))
     from clamp_brdf import clamp_state
 
     kernel = clamp_state()
     if kernel == requested:
-        print(f">>> BRDF clamp: {'ON' if kernel else 'OFF'} on both sides",
-              flush=True)
+        print(f">>> BRDF clamp: {'ON' if kernel else 'OFF'} on both sides", flush=True)
         return
     raise RuntimeError(
         f"the BRDF clamp is {'ON' if kernel else 'OFF'} in Smart-G and "
@@ -737,9 +612,7 @@ def check_clamp_agrees(requested: bool) -> None:
 def main() -> None:
     """Measure what the Lambertian assumption costs on three surfaces."""
     run, args = parse_run(__doc__.splitlines()[0], build_parser())
-    run = run.resolve(
-        n=1999, res_km=0.10, cache_dir=str(get_cache_path() / "hotspot")
-    )
+    run = run.resolve(n=1999, res_km=0.10, cache_dir=str(get_cache_path() / "hotspot"))
     if run.smoke:
         args.scales = [1.0, 5.0]
         args.nr = 20
