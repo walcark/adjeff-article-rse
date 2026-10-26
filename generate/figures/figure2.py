@@ -1,11 +1,9 @@
-"""Comparison of rho_s predictions: GeneralizedGaussianPSF vs Gauss-330.
+"""Surface reflectance with a generalised Gaussian PSF (figure 2).
 
-Optimize a Generalized Gaussian PSF model of three disks of increasing radii
-(1, 5, 50 km), then compares to surface reflectance estimate of the PSF model
-with:
-
-    - no adjacency effects correction (rho_unif),
-    - adjacency effects correction with a Gaussian Kernel (sigma=330m)
+A generalised Gaussian is fitted on three disks of radius 1, 5 and 50 km,
+then used to retrieve the surface reflectance of a scene.  Three curves
+are compared: no adjacency correction at all, the fixed 330 m Gaussian
+MAJA applies, and the fitted kernel.
 """
 
 from adjeff.core import GeneralizedGaussianPSF, S2Band

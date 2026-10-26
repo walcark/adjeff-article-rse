@@ -33,9 +33,12 @@ if [ "$GROUP" -lt 1 ] || [ "$GROUP" -gt "${#ALL[@]}" ]; then
 fi
 SPECIES=${ALL[$((GROUP - 1))]}
 
-SCRATCH=/work/scratch/data/walcark
-REPO=/work/scratch/env/walcark/adjeff-article-rse
-TRAINING=gauss
+# The paths this job was run with at CNES.  `--export=none` above drops
+# the submitting shell's environment, so overriding them takes
+# `sbatch --export=ALL,SCRATCH=...,REPO=...`, or an edit here.
+SCRATCH=${SCRATCH:-/work/scratch/data/walcark}
+REPO=${REPO:-/work/scratch/env/walcark/adjeff-article-rse}
+TRAINING=${TRAINING:-gauss}
 
 export PATH="$SCRATCH/pixi/bin:$PATH"
 export ADJEFF_ARTICLE_CACHE="$SCRATCH/adjeff-article/cache"

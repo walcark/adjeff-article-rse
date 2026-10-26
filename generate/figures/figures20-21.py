@@ -1,11 +1,11 @@
-"""Scatter plots and RMSE improvement for King PSF on Sentinel-2 bands.
+"""King PSF against real Sentinel-2 data (figures 20 and 21).
 
-Two figures built from real Sentinel-2 data:
+Figure 20 scatters the retrieved surface reflectance against the measured
+one, for six bands and four corrections: none, the 330 m Gaussian of
+MAJA, Wu et al. (2024), and the King kernel of this article.
 
-  - Figure 22: scatter plots of predicted vs. actual rho_s for six bands,
-               comparing Unif, Gauss (MAJA), Wu, and King PSF corrections.
-  - Figure 23: RMSE improvement of King vs. Unif/Gauss/Wu as a function of
-               wavelength.
+Figure 21 reduces the same runs to the RMSE the King kernel gains over
+each of the other three, band by band.
 """
 
 from pathlib import Path

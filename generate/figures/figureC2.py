@@ -1,16 +1,11 @@
-"""Encircled-energy radii against the radial RMSE loss (figure C.2).
+"""Kernel width against the loss it achieves (figure C.2).
 
-For a Gaussian Generalized PSF model, the (n, sigma) space is explored and
-for each couple (n, sigma), the radial RMSE loss and encircled-energy are
-computed.
+Every (n, sigma) of a generalised Gaussian is scored by its radial RMSE,
+and plotted against the radii holding 50, 90 and 99 % of its energy.
 
-The radial RMSE loss expresses the ability of the PSF model to link TOA
-reflectance to surface reflactance in the context of adjacency effects
-correction.
-
-The scatter reveals whether close-to-optimal kernels are close to each
-other, which is in favour the the optimal PSF model is representative of
-the true physics, and will not vary due to non-optimal optimisation.
+A tight cloud means the kernels that fit well also look alike, so the
+best one describes the physics rather than wherever the optimiser
+happened to stop.
 """
 
 import matplotlib.pyplot as plt

@@ -81,7 +81,7 @@ Nothing is downloaded: `inputs/smartg_auxdata/` holds the subset of the [Smart-G
 
 Those aerosol tables came from MOPSMAP through [pymopsmap](https://github.com/walcark/pymopsmap); `generate/sedoo/build_cams_auxdata.py` documents the grid they are tabulated on, and rebuilding them needs the MOPSMAP binary, which reproducing the figures does not.
 
-`pyproject.toml` is what pixi reads, and any other environment manager can read it too. `pixi install -e local` builds adjeff from a sibling checkout of `../Adjeff` rather than from PyPI, which is how a change is tried before it is released.
+`pyproject.toml` is what pixi reads, and any other environment manager can read it too.
 
 The Smart-G cache sits outside the repository, under `~/.cache/adjeff-article/`: it runs to gigabytes and has to survive a reboot. [docs/MAINTAINING.md](docs/MAINTAINING.md) says how to move it, and covers the rest of what reproducing a figure does not need.
 

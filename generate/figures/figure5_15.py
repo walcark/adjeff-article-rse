@@ -1,19 +1,20 @@
-"""PSF sensitivity to atmospheric and geometric parameters (figures 5 to 15).
+"""How the PSF responds to the atmosphere and the geometry (figures 5 to 15).
 
-For each value of the swept parameter, a King PSF is optimised on three
-disk training fields (radii 1, 5, 50 km).  The resulting kernels are
-compared on two subplots: radial profile (log scale) and encircled energy.
+One parameter is swept at a time.  A King kernel is fitted for each of
+its values, on three disks of radius 1, 5 and 50 km, and the kernels are
+drawn side by side: radial profile on a log scale, encircled energy next
+to it.
 
-Panel (b) is normalised on the plane rather than on the grid, so each
-curve stops at the fraction of its energy the 240 km domain actually
-holds.
+The encircled energy is normalised on the plane rather than on the grid,
+so each curve stops at the share of its energy the 240 km domain holds
+rather than reaching one.
 
 Usage
 -----
-python figure5_15.py --figure figure5 \\
-    --aot 0.1 0.3 0.5 0.7 \\
-    --rh 50.0 --h 0.0 --href 2.0 --wl 560.0 \\
-    --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \\
+python figure5_15.py --figure figure5 \
+    --aot 0.1 0.3 0.5 0.7 \
+    --rh 50.0 --h 0.0 --href 2.0 --wl 560.0 \
+    --sza 40.0 --vza 8.0 --saa 0.0 --vaa 0.0 \
     --species blackcar --remove_rayleigh
 """
 

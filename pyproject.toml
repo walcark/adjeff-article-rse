@@ -28,18 +28,8 @@ sensorsio = ">=1.0.2"
 # pycuda dependency must still come from conda, see below.
 smartg = ">=2.0.1,<3"
 
-# Where adjeff comes from, as two mutually exclusive features.
-#
-# `release` is what the article claims: the figures were reproduced
-# against this exact PyPI release, and it is the only one a reader of the
-# paper needs.  `local` builds adjeff from a sibling checkout so that a
-# change can be smoke-tested before it is tagged, which is what breaks
-# the chicken-and-egg between the release and this repository's pin.
-[tool.pixi.feature.release.pypi-dependencies]
-adjeff = "==1.2.6"
-
-[tool.pixi.feature.local.pypi-dependencies]
-adjeff = { path = "../Adjeff", editable = true }
+# The release the figures of the article were reproduced against.
+adjeff = "==1.2.7"
 
 # Conda-only deps that adjeff and smartg need but cannot declare on PyPI,
 # plus what this repo imports directly.
@@ -77,12 +67,6 @@ cuda-nvcc = "12.9.*"
 # toolkit on any 12.x driver, so pinning this floor to the toolkit version
 # would lock out the CNES servers (driver 12.4) for no reason.
 cuda = "12.0"
-
-# `local` needs ../Adjeff next to this repository; it is a development
-# environment and is not required to reproduce the figures.
-[tool.pixi.environments]
-default = ["release"]
-local = ["local"]
 
 # ── Tâches ───────────────────────────────────────────────────────────────────
 [tool.pixi.tasks]

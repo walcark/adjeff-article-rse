@@ -1,34 +1,31 @@
-r"""Surface reflectance error induced by an AOT misestimation.
+"""What a wrong AOT costs the retrieved reflectance.
 
-A first-order estimate of the surface-reflectance error caused by a
-+/-0.2 deviation between the tile-mean AOT used for the correction and
-the true local AOT.
+A first-order estimate of the error a +/-0.2 gap between the tile-mean
+AOT used for the correction and the true local AOT leaves on the surface
+reflectance.
 
-A single AOT estimate feeds both the 5S scalar terms (rho_atm, T_up,
-T_down, s) and the shape of the PSF, so a wrong AOT corrupts both.  The
-resulting error is therefore reported as three contributions, all derived
-from the very same simulations:
+One AOT estimate feeds both the 5S scalar terms (``rho_atm``, ``T_up``,
+``T_down``, ``s``) and the shape of the kernel, so a wrong one corrupts
+both.  The error is split into three, all from the same simulations:
 
-  - ``eps_total``   both the scalar terms and the PSF use the (wrong)
-                    tile-mean AOT.  This is the operational case.
-  - ``eps_scalar``  only the scalar terms use the tile-mean AOT, the PSF
-                    matches the true AOT.  Classic atmospheric correction
-                    error, outside the scope of this paper.
-  - ``eps_psf``     only the PSF uses the tile-mean AOT, the scalar terms
-                    match the true AOT.  Error attributable to the single
+  - ``eps_total``   both the scalar terms and the kernel use the wrong
+                    tile-mean AOT.  The operational case.
+  - ``eps_scalar``  only the scalar terms are wrong, the kernel matches
+                    the true AOT.  Ordinary atmospheric correction
+                    error, outside the scope of this article.
+  - ``eps_psf``     only the kernel is wrong.  The cost of a single
                     tile-averaged kernel, which is what this measures.
 
-Two reference columns are reported alongside: ``no_adj_corr`` (rho_unif
-compared to rho_s, i.e. no adjacency correction at all) and ``matched``
-(both the scalar terms and the PSF at the true AOT, i.e. the best
-achievable accuracy).  Reading eps_psf against these two is what answers
-the question, since the raw RMSE also grows with the aerosol load on its
-own.
+Two columns frame them: ``no_adj_corr``, which is no adjacency
+correction at all, and ``matched``, where nothing is wrong and which is
+therefore the best reachable.  Reading ``eps_psf`` against those two is
+what answers the question, the raw RMSE growing with the aerosol load on
+its own.
 
-Errors are radial RMSE (Metric.RMSE_RAD, masked on rho_unif), averaged
-over the 6 training landscapes of Section 2.3.1, exactly as in Tables 2
-and 3.  Since the landscapes span rho_s in [0, 1], the normalisation of
-the metric is close to unity and the values read directly as surface
+Errors are radial RMSE (``Metric.RMSE_RAD``, masked on ``rho_unif``)
+averaged over the six training landscapes of section 2.3.1, as in tables
+2 and 3.  Those landscapes span ``rho_s`` in [0, 1], so the metric's
+normalisation is close to one and the values read directly as surface
 reflectance.
 
 Usage

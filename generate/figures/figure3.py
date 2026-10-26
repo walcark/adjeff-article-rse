@@ -1,10 +1,8 @@
-"""Comparison of rho_s predictions: KingPSF vs Gauss-330.
+"""Surface reflectance with a King PSF (figure 3).
 
-Optimize a King PSF model of three disks of increasing radii (1, 5, 50 km),
-then compares to surface reflectance estimate of the PSF model with:
-
-    - no adjacency effects correction (rho_unif),
-    - adjacency effects correction with a Gaussian Kernel (sigma=330m)
+Figure 2 with a King kernel in place of the generalised Gaussian: fitted
+on the same three disks, compared against no correction and against the
+fixed 330 m Gaussian.
 """
 
 from adjeff.core import KingPSF, S2Band

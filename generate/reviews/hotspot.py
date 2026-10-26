@@ -1,13 +1,13 @@
-"""What the Lambertian assumption costs, on three real surfaces.
+"""What a Lambertian surface costs, on three real ones (answer T1).
 
-The King kernel of the article is fitted on Lambertian landscapes and
-then applied, unchanged, to scenes simulated with a Ross-Li Thick BRDF
-taken from MODIS MCD43A1.  The retrieval error against the Lambertian
-reference is what the Lambertian assumption costs.
+The King kernel of the article is fitted on Lambertian landscapes, then
+applied unchanged to scenes simulated with a Ross-Li Thick BRDF taken
+from MODIS MCD43A1.  Its retrieval error against the Lambertian
+reference is what the assumption costs.
 
-The three surfaces bracket Lambertian rather than sitting on one side of
-it, and all three keep under 1 % of their upward flux where the Ross-Li
-fit turns negative:
+The three surfaces sit on either side of Lambertian rather than all on
+one side, and all three keep under 1 % of their upward flux where the
+Ross-Li fit turns negative:
 
 ===================== ======= ============== ===================
 site                  a       BRF negative   negative flux
@@ -17,28 +17,24 @@ libya4-desert         1.015   90 deg         0.012 %
 konza-grassland       1.056   86 deg         0.36 %
 ===================== ======= ============== ===================
 
-``a = albedo / BRF(view)`` is one for a Lambertian surface, below one
-when it is brighter towards the sensor than towards the hemisphere.  The
-albedo is the blue-sky one: the surface is lit by a direct beam and a
-diffuse sky, so the black-sky (`hemispheric`) and white-sky
-(`bihemispheric`) integrals are mixed by the diffuse fraction, read from
-the MODIS lookup table, see `adjeff_article_1.skylight`.
+``a = albedo / BRF(view)`` is one for a Lambertian surface and below one
+when the surface is brighter towards the sensor than towards the
+hemisphere.  The albedo is the blue-sky one, the surface being lit by a
+direct beam and a diffuse sky.
 
-``a`` is not a property of the surface alone.  At nadir view the three
-cross one at 42.0, 29.1 and 32.8 degrees, so the manuscript's 40 degrees
-is where the assumption costs the least for two of them.  Sun zeniths of
-20 and 60 are run as well, which separates the two readings left open:
-the cost follows the *sign* of ``a - 1``, not its magnitude.  At 40
-degrees Konza departs nearly four times further than Skukuza and
-degrades four times less.
+At 40 degrees, the manuscript's geometry, the cost is smallest for two
+of the three.  Sun zeniths of 20 and 60 are run as well, and they settle
+what 40 leaves open: the cost follows the *sign* of ``a - 1``, not its
+size.  Konza departs nearly four times further than Skukuza and degrades
+four times less.
 
 ``disk1`` and ``disk5`` are reported and set aside: their error is the
 edge the deconvolution cannot resolve, twenty times the adjacency error,
-and they discriminate no surface.  See ``UNINFORMATIVE``.
+and it tells the surfaces apart not at all.  See ``UNINFORMATIVE``.
 
-Outputs are named by geometry and clamp mode, so runs can be compared
-rather than overwrite each other: the coefficients as a CSV, the angular
-shapes as a figure, and the retrieval error as a table.
+Outputs carry the geometry and the clamp mode in their names, so runs
+can be compared instead of overwriting one another: the coefficients as
+a CSV, the angular shapes as a figure, the retrieval error as a table.
 
 Usage
 -----

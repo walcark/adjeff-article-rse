@@ -1,21 +1,20 @@
-"""What the Lambertian assumption costs on ``tdif_up`` and ``sph_alb``.
+"""What a Lambertian surface costs on ``tdif_up`` and ``sph_alb``.
 
-The study of answer T1 applies a King kernel fitted on Lambertian
-landscapes to scenes simulated with a Ross-Li BRDF.  Two of the six
-radiative quantities are surface-dependent, and they were kept
-Lambertian throughout: the four others never see the ground.  This
-script measures how wrong that is, before any kernel enters the picture.
+Answer T1 applies a kernel fitted on Lambertian landscapes to scenes
+simulated with a Ross-Li BRDF.  Two of the six radiative terms depend on
+the surface and were left Lambertian anyway; the four others never touch
+the ground.  This measures how wrong that is, before any kernel is
+involved.
 
-For every sun zenith angle and every surface it draws ``tdif_up`` and
-``sph_alb`` over an aerosol sweep, once with the Lambertian samplers and
-once with their BRDF variants.  Each surface is rescaled by
-``k0 = 1 / shape_of(...)`` so that the reflectance the sensor observes is
-the same for all four, which is the rescaling the landscapes already get:
-what differs is only what leaves towards the hemisphere.
+Both terms are drawn over an aerosol sweep, for every sun zenith angle
+and every surface, once through the Lambertian samplers and once through
+their BRDF variants.  Each surface is rescaled so that the sensor sees
+the same reflectance from all four: only what leaves towards the
+hemisphere differs.
 
-The Lambertian case is run **twice**, through the Lambertian samplers and
-through the BRDF ones at ``k1p = k2p = 0``.  Those two must agree, and
-their gap is the Monte-Carlo floor every other number has to clear.
+The Lambertian case runs twice, through both sampler families, the
+second at ``k1p = k2p = 0``.  They must agree, and their gap is the
+Monte-Carlo floor every other number has to clear.
 
 Usage
 -----

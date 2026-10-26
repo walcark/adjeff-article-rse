@@ -1,16 +1,15 @@
-"""The three BRDF shapes at three sun zenith angles, on one figure.
+"""The three BRDF shapes at three sun zenith angles (answer T1).
 
-Draws nothing but the angular shapes: the coefficients come from the
-cached MODIS ensemble and no simulation is run.  It is the companion
-figure to the Lambertian-assumption table of answer T1, and it exists
-separately from `hotspot.py` so that redrawing it costs seconds.
+Nothing is simulated: the coefficients come from the cached MODIS
+ensemble and only the angular shapes are drawn.  It is the companion
+figure to the table of `hotspot.py`, kept apart so that redrawing it
+costs seconds.
 
-Each curve is divided by its own value in the viewing direction, which is
-what the simulation applies: the landscapes are rescaled so that the
-reflectance the sensor *observes* is the same for every surface, and only
-what leaves towards the hemisphere differs.  All four curves therefore
-pass through one at nadir, and their spread away from it is the whole
-effect under study.
+Each curve is divided by its own value in the viewing direction, which
+is what the simulation does to the landscapes: the sensor sees the same
+reflectance from every surface, and only what leaves towards the
+hemisphere differs.  All four therefore pass through one at nadir, and
+their spread away from it is the effect under study.
 
 Usage
 -----

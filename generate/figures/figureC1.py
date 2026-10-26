@@ -1,12 +1,12 @@
-"""Loss landscape of the GG PSF model, four training sets (figure C.1).
+"""What the training set does to the loss landscape (figure C.1).
 
-Four grids over the (n, sigma) parameter space are shown, each built from
-a different set of training scenes:
+The same generalised Gaussian is fitted four times, on four training
+sets, and the loss is mapped over the (n, sigma) plane each time:
 
-  (a) Single Gaussian sigma = 1.0 km
-  (b) Single Gaussian sigma = 50.0 km
-  (c) Three Gaussians (sigma = 1, 5, 50 km)
-  (d) Three Gaussians + three disks (radius = 1, 5, 50 km)
+  (a) one Gaussian, sigma = 1 km
+  (b) one Gaussian, sigma = 50 km
+  (c) three Gaussians, sigma = 1, 5, 50 km
+  (d) those three plus three disks of radius 1, 5, 50 km
 """
 
 import matplotlib.pyplot as plt

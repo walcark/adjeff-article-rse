@@ -47,9 +47,7 @@ for g in $(seq 8); do sbatch generate/sedoo/build_psf_lut.slurm $g; done
 
 A slab is one `(band, href)`, its 72 states swept in one go, and takes about 1h40 on a V100. Thirty-six slabs make 59 hours, which is why a job carries one species rather than two.
 
-Each slab is written under `slabs/` as soon as it is fitted, so a job that runs out of time is resubmitted and skips what is there. That needs the cache and the slabs to outlive the job, hence both on the scratch.
-
-The cache of a slab is deleted once its file is written, which is what keeps the scratch from filling: a state weighs 128 MB at 3999 pixels, a slab some 55 GB, a species 2 TB. Nothing downstream reads it, the next slab rebuilding its config around another band, reference height or species. `--keep-cache` turns the deletion off, for debugging a slab whose scenes are worth keeping.
+Each slab is written under `slabs/` as soon as it is fitted. The cache of a slab is deleted once its file is written. Nothing downstream reads it, the next slab rebuilding its config around another band, reference height or species. `--keep-cache` turns the deletion off, for debugging a slab whose scenes are worth keeping.
 
 `--training gauss` is what the deposited tables were fitted on; `--training disks` is what the figures of the article use. A cube built with the other one is not a reproduction of the deposit.
 
@@ -109,7 +107,6 @@ AppEEARS is LP DAAC's point-sampling service for the same granules. It submits a
 After bumping the pinned adjeff release, run every script at a tiny grid and photon count. It proves the API each one calls still exists and still returns usable shapes, and nothing about the physics:
 
 ```bash
-pixi run -e default python generate/smoke.py --cold
+pixi run python generate/smoke.py --cold
 ```
 
-`--cold` is what a version check needs: a warm cache short-circuits the Smart-G calls, so a run that reuses it only proves that zarr still reads back. A script joins the run automatically as soon as its `--help` advertises `--smoke`.

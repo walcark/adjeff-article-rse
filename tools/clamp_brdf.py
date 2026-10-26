@@ -85,7 +85,7 @@ def device_source() -> Path:
     except ImportError as exc:
         raise RuntimeError(
             "smartg is not importable from this environment; run this "
-            "through pixi, e.g. `pixi run -e local python "
+            "through pixi, e.g. `pixi run python "
             "tools/clamp_brdf.py --status`"
         ) from exc
     path = Path(SRC_DEVICE)
@@ -155,7 +155,7 @@ def turn_off(path: Path) -> None:
         raise RuntimeError(
             f"no backup at {BACKUP} and {path} does not hold the patch "
             "verbatim, so it cannot be undone safely. Reinstall smartg: "
-            "`pixi clean` then `pixi install -e local`."
+            "`pixi clean` then `pixi install`."
         )
     path.write_text(text.replace(PATCH, ANCHOR, 1))
     print(f"clamp OFF  {path}  (undone textually, no backup was present)")
