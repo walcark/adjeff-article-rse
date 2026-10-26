@@ -1,32 +1,4 @@
-"""MCD43A1 BRDF coefficients from AppEEARS, when ORNL cannot serve them.
-
-The hotspot study reads its RTLS weights from MCD43A1.  It used to get
-them from the ORNL TESViS web service, which is convenient because it
-needs no account: one GET per site and the coefficients come back.
-
-That service is, at the time of writing, answering ``500`` to every
-request that touches its catalogue: ``/products``, ``/sites`` and
-``/{product}/bands`` all fail, while ``/networks``, whose answer is a
-static list, succeeds.  The failure is in their database layer and no
-request shaped differently gets past it.
-
-AppEEARS is LP DAAC's point-sampling service for the same granules.  It
-asks for a NASA Earthdata account, which is what
-:mod:`adjeff_article_1.credentials` exists to supply, and it works by
-submitting a task and collecting it once it has run, rather than by
-answering in-line.  That is slower, minutes rather than seconds, and it
-only has to happen once: the result is written to the CSV the study
-already treats as its hand-off point.
-
-Notes
------
-`BRDF_Albedo_Parameters_Band1` is a 3-D layer holding, in order, the
-isotropic, volumetric and geometric weights, scaled by ``1e-3`` with
-``32767`` for fill.  AppEEARS names the three components of a 3-D layer
-by appending ``_0``, ``_1`` and ``_2``, which is checked here rather
-than assumed: a renaming upstream should fail loudly and not quietly
-produce a physically wrong triplet.
-"""
+"""MCD43A1 BRDF coefficients from AppEEARS, when ORNL cannot serve them."""
 
 from __future__ import annotations
 
@@ -279,9 +251,7 @@ def _collect(token: str, task_id: str, layer: str) -> list[dict[str, float | str
             name = next(n for n in archive.namelist() if n.endswith(".csv"))
             raw = archive.read(name)
 
-    logger.info(
-        "appeears.collected", task_id=task_id, file=chosen.get("file_name")
-    )
+    logger.info("appeears.collected", task_id=task_id, file=chosen.get("file_name"))
     return _average_sites(raw.decode("utf-8", "replace"), layer)
 
 

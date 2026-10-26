@@ -1,55 +1,21 @@
-"""The diffuse fraction of the downwelling flux, from the MODIS table.
-
-A MODIS BRDF fit gives two hemispheric reflectances, and neither is the
-one an adjacency computation needs on its own.  The black-sky albedo,
-or directional-hemispherical reflectance, is what the surface returns
-under a purely direct beam; the white-sky albedo, or bihemispherical
-reflectance, is what it returns under a purely isotropic sky.  A real
-surface sees both, so the quantity that feeds ``rho_env`` is the
-blue-sky albedo, the two mixed by how much of the downwelling flux is
-diffuse::
-
-    alpha_blue = f_diffuse * BHR + (1 - f_diffuse) * DHR
-
-That fraction is not a free choice: it depends on the sun zenith angle,
-on the aerosol optical thickness and on the band.  The MODIS albedo
-products carry it as a lookup table, and this reads that table rather
-than guessing a round number.
-
-The table is ``skyl_lut.dat``, taken from the USGS reference
-implementation *Computation of Blue-Sky Albedo from MODIS MCD43A1 Data*
-(https://code.usgs.gov/cfwsc/modis-mcd43a1-blue-sky-albedo).  It holds
-two aerosol types, Continental and Maritime, ten bands each, on a grid
-of 91 sun zenith angles (0 to 90 degrees, one degree apart) and 50
-optical thicknesses (0.00 to 0.98, 0.02 apart).
-
-Note the band numbering is MODIS's, not Sentinel-2's: band 1 is
-620-670 nm, band 3 is 459-479 nm.  The BRDF coefficients and the
-skylight fraction must be read on the same band, which is the caller's
-responsibility.
-"""
+"""The diffuse fraction of the downwelling flux, from the MODIS table."""
 
 from __future__ import annotations
 
 import functools
 from pathlib import Path
 
-from .utils import get_inputs_path
-
 import numpy as np
 
 from ._logging import get_logger
+from .utils import get_inputs_path
 
 __all__ = ["MODIS_BANDS", "blue_sky", "skylight_fraction"]
 
 logger = get_logger(__name__)
 
-#: Shipped with the repository: it is 540 kB of ASCII and the figure
-#: must not depend on a host being up.
 LUT_PATH = get_inputs_path() / "modis" / "skyl_lut.dat"
 
-#: Wavelength range of each band the table covers, in nanometres, so a
-#: caller can check it is asking on the band its coefficients came from.
 MODIS_BANDS: dict[int, tuple[float, float]] = {
     1: (620.0, 670.0),
     2: (841.0, 876.0),
@@ -63,7 +29,6 @@ MODIS_BANDS: dict[int, tuple[float, float]] = {
     10: (250.0, 4000.0),
 }
 
-#: The two atmospheres the table was computed for.
 AEROSOLS = ("Continental", "Maritime")
 
 
@@ -102,9 +67,7 @@ def _read(
 
     lines = Path(path).read_text().splitlines()
     starts = [i for i, s in enumerate(lines) if s.startswith("Aerosol_type:")]
-    first = next(
-        i for i in starts if lines[i].split(":", 1)[1].strip() == aerosol
-    )
+    first = next(i for i in starts if lines[i].split(":", 1)[1].strip() == aerosol)
     last = next((i for i in starts if i > first), len(lines))
 
     # Bands 1 to 7 are labelled MODIS_Band_n, 8 to 10 Broad_Band_n.

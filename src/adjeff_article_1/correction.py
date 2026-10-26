@@ -4,12 +4,6 @@ This is the article's own experiment, not a gap in adjeff: it corrects a
 scene with a PSF chosen independently of the atmosphere the scene was
 simulated at, which is how the error is split between the scalar terms
 of the 5S model and the kernel.
-
-It used to live in ``shim.py`` for a different reason.  ``Unif2Surface``
-writes ``rho_s``, which is also the name of the ground truth, so a scene
-carrying both lost one of them and the helper had to strip the truth out
-before running.  adjeff 0.10.0 binds roles to slots, so the estimate now
-travels under its own name and the truth stays where it is.
 """
 
 from __future__ import annotations

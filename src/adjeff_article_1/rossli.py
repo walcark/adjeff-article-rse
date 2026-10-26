@@ -12,7 +12,7 @@ is why no shape ratio appears and the zenith angles are used unmodified.
 Changing it would break the meaning of the distributed coefficients.
 
 The fit is not constrained positive and goes below zero at grazing view
-for an anisotropic surface.  `shape_of` can hold it at zero, which
+for an anisotropic surface. `shape_of` can hold it at zero, which
 Smart-G can be made to do too, see ``tools/clamp_brdf.py``: the two
 must agree, or a correction is judged against a truth simulated for
 another surface.
@@ -53,9 +53,7 @@ def _rtls_angles(
     phi = np.where(phi > np.pi, 2.0 * np.pi - phi, phi)
     phi = np.where((ths == 0.0) | (thv == 0.0), 0.0, phi)
 
-    cos_xi = np.cos(ths) * np.cos(thv) + np.sin(ths) * np.sin(thv) * np.cos(
-        phi
-    )
+    cos_xi = np.cos(ths) * np.cos(thv) + np.sin(ths) * np.sin(thv) * np.cos(phi)
     return ths, thv, phi, np.clip(cos_xi, -1.0, 1.0)
 
 
@@ -124,8 +122,7 @@ def f2_rtls(
     ths, thv, _, cos_xi = _rtls_angles(sza_deg, vza_deg, raa_deg)
     xi = np.arccos(cos_xi)
     return np.asarray(
-        ((np.pi / 2.0 - xi) * cos_xi + np.sin(xi))
-        / (np.cos(thv) + np.cos(ths))
+        ((np.pi / 2.0 - xi) * cos_xi + np.sin(xi)) / (np.cos(thv) + np.cos(ths))
         - np.pi / 4.0,
         dtype=float,
     )
@@ -233,13 +230,9 @@ def hemispheric(sza_deg: float, k1p: float, k2p: float, clamp: bool) -> float:
     theta = np.linspace(1e-4, np.pi / 2.0 - 1e-4, 400)
     phi = np.linspace(0.0, 2.0 * np.pi, 241)
     grid_t, grid_p = np.meshgrid(theta, phi, indexing="ij")
-    shape = shape_of(
-        sza_deg, np.degrees(grid_t), np.degrees(grid_p), k1p, k2p, clamp
-    )
+    shape = shape_of(sza_deg, np.degrees(grid_t), np.degrees(grid_p), k1p, k2p, clamp)
     weighted = shape * np.cos(grid_t) * np.sin(grid_t)
-    return float(
-        np.trapezoid(np.trapezoid(weighted, phi, axis=1), theta) / np.pi
-    )
+    return float(np.trapezoid(np.trapezoid(weighted, phi, axis=1), theta) / np.pi)
 
 
 def bihemispheric(k1p: float, k2p: float, clamp: bool, n_theta: int = 200) -> float:
@@ -267,12 +260,8 @@ def bihemispheric(k1p: float, k2p: float, clamp: bool, n_theta: int = 200) -> fl
         The bihemispherical reflectance of the shape.
     """
     theta = np.linspace(1e-4, np.pi / 2.0 - 1e-4, n_theta)
-    black = np.array(
-        [hemispheric(np.degrees(t), k1p, k2p, clamp) for t in theta]
-    )
-    return float(
-        2.0 * np.trapezoid(black * np.cos(theta) * np.sin(theta), theta)
-    )
+    black = np.array([hemispheric(np.degrees(t), k1p, k2p, clamp) for t in theta])
+    return float(2.0 * np.trapezoid(black * np.cos(theta) * np.sin(theta), theta))
 
 
 def negative_flux(sza_deg: float, k1p: float, k2p: float, n_theta: int = 200) -> float:

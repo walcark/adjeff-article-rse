@@ -1,9 +1,9 @@
 """Run parameters shared by every figure script, plus the smoke mode.
 
 The article figures are expensive: a 3999 pixel grid and 1e5 photons per
-Smart-G call take hours on a GPU.  :class:`RunConfig` carries those
+Smart-G call take hours on a GPU. :class:`RunConfig` carries those
 numbers so that ``--smoke`` can shrink them to something that runs in
-minutes.  Smoke output is scientifically meaningless on purpose: its only
+minutes. Smoke output is scientifically meaningless on purpose: its only
 job is to prove that the adjeff API a script calls still exists and still
 returns the expected shapes, which is what must be re-checked at every
 adjeff version bump.
@@ -134,9 +134,7 @@ class RunConfig:
         """
         if self.smoke:
             return self
-        updates = {
-            k: v for k, v in native.items() if k not in self.explicit
-        }
+        updates = {k: v for k, v in native.items() if k not in self.explicit}
         return replace(self, **updates) if updates else self
 
     @property

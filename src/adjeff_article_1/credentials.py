@@ -1,9 +1,4 @@
-"""Where the NASA Earthdata credentials come from, and where they do not.
-
-MODIS BRDF products are served from hosts that ask who you are, so the
-hotspot figure needs an account.  A repository is the one place those
-details must never live: this reads them from outside it, in the order a
-reader would expect, and never writes them anywhere.
+"""Where the NASA Earthdata credentials come from.
 
 Order of precedence, first match wins:
 

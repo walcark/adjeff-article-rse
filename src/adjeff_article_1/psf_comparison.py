@@ -1,11 +1,4 @@
-"""Compare an optimised PSF against the fixed Gauss-330 m reference.
-
-Figures 4 and 5 answer the same question for two kernel families: how
-well does an optimised PSF recover ``rho_s`` from ``rho_unif`` on uniform
-disks, next to the Gaussian of 330 m used as a baseline in the
-literature.  Only the PSF class and its initial parameters differ, so the
-whole comparison lives here and each figure script declares its kernel.
-"""
+"""Compare an optimised PSF against the fixed Gauss-330 m reference."""
 
 from __future__ import annotations
 
@@ -73,9 +66,7 @@ def psf_comparison_figure(
         init_parameters=init_parameters,
         device=run.device,
     )
-    tree = fit(
-        model, train_images, loss=Loss(Metric.RMSE_RAD), device=run.device
-    )
+    tree = fit(model, train_images, loss=Loss(Metric.RMSE_RAD), device=run.device)
 
     model_fitted = Unif2Surface(kernels=tree, device=run.device)
     reference_kernel = GaussPSF(
