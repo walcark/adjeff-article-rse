@@ -15,60 +15,34 @@ requires = ["hatchling"]
 [tool.hatch.build.targets.wheel]
 packages = ["src/adjeff_article_1"]
 
-# ── Pixi workspace ────────────────────────────────────────────────────────────
 [tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["linux-64"]
 
 [tool.pixi.pypi-dependencies]
 adjeff-article-rse = { path = ".", editable = true }
-# Used lazily by adjeff's MAJA loader; PyPI-only, no conda-forge build.
 sensorsio = ">=1.0.2"
-# Smart-G 2.0 has no conda-forge build yet; 1.2.0 was the last one.  Its
-# pycuda dependency must still come from conda, see below.
 smartg = ">=2.0.1,<3"
-
-# The release the figures of the article were reproduced against.
 adjeff = "==1.2.7"
 
-# Conda-only deps that adjeff and smartg need but cannot declare on PyPI,
-# plus what this repo imports directly.
 [tool.pixi.dependencies]
 python = ">=3.11,<3.13"
-# Pinned here so sensorsio (PyPI-only, above) does not pull its own PyPI
-# wheel instead: that one bundles a different GDAL, which silently fails
-# to find a MAJA product's bands by their real file type.
 rasterio = ">=1.4.3,<2"
-# smartg hard-depends on pycuda, and it has to come from conda: the PyPI
-# sdist compiles against `cudaProfiler.h`, which only the CUDA toolkit
-# ships, and uv has no way to find it.
 pycuda = "*"
-# Smart-G 2.0 is built against geoclide 4, which is what lifted the
-# `get_rotateX_tf` break that only adjeff's PSF sampler ever reached.
-# Mirrors the bound adjeff sets; lift both together.
 geoclide = ">=4,<5"
 matplotlib = ">=3.9"
 scienceplots = ">=2.0"
 numpy = ">=2.0"
 xarray = ">=2026.1.0"
 pandas = ">=2.0"
-# CUDA >= 12.8 is required: nvcc only learns `sm_120` (Blackwell, RTX 50xx)
-# there, and SMART-G compiles its kernels for the local compute capability.
 cuda-version = "12.9.*"
 pytorch-gpu = "*"
-# pycuda compiles its kernels at runtime but does not declare nvcc itself.
 cuda-cudart-dev = "12.9.*"
 cuda-nvcc = "12.9.*"
 
 [tool.pixi.system-requirements]
-# The driver floor, not the toolkit version: the three pins above stay at
-# 12.9 because conda-forge builds pycuda against `cuda-version >=12.9`, and
-# no 12.4 build of it exists.  CUDA 12 minor version compatibility runs that
-# toolkit on any 12.x driver, so pinning this floor to the toolkit version
-# would lock out the CNES servers (driver 12.4) for no reason.
 cuda = "12.0"
 
-# ── Tâches ───────────────────────────────────────────────────────────────────
 [tool.pixi.tasks]
 figures-all = { cmd = "bash makefig" }
 smoke = { cmd = "python generate/smoke.py" }

@@ -1,13 +1,13 @@
-"""The three BRDF shapes at three sun angles (answer T1).
+"""The three BRDF shapes at three sun angles.
 
-Nothing is simulated: the coefficients come from the cached MODIS
-ensemble and only the shapes are drawn. Companion to the table of
-`hotspot.py`, kept apart so redrawing costs seconds.
+Nothing is simulated: the coefficients come from the cached MODIS ensemble
+and only the shapes are drawn. Companion to the table of `hotspot.py`, kept
+apart so redrawing costs seconds.
 
-Each curve is divided by its own value towards the sensor, which is what
-the simulation does to the landscapes: every surface looks the same to
-the sensor, and only what leaves towards the sky differs. All four
-therefore pass through one at nadir, and their spread is the effect.
+Each curve is divided by its own value towards the sensor, which is what the
+simulation does to the landscapes: every surface looks the same to the sensor,
+and only what leaves towards the sky differs. All four therefore pass through
+one at nadir, and their spread is the effect.
 
 Usage
 -----

@@ -1,4 +1,4 @@
-"""Run every smoke-capable figure script and report which ones survive.
+"""Run every smoke-capable figure script and report which ones succeed.
 
 This is the check to run after bumping the pinned adjeff release: it does
 not verify the physics, only that each script still finds the adjeff API
@@ -58,9 +58,7 @@ def purge_cache() -> None:
     if not cache_dir.is_dir():
         print(f"cold: {cache_dir} is already absent")
         return
-    size_mb = sum(
-        f.stat().st_size for f in cache_dir.rglob("*") if f.is_file()
-    ) / 1e6
+    size_mb = sum(f.stat().st_size for f in cache_dir.rglob("*") if f.is_file()) / 1e6
     print(f"cold: removing {cache_dir} ({size_mb:.1f} MB)")
     shutil.rmtree(cache_dir)
 
@@ -131,8 +129,7 @@ def main() -> int:
         s
         for directory in SCRIPT_DIRS
         for s in directory.glob("*.py")
-        if not s.name.startswith("_")
-        and (not wanted or s.stem in wanted)
+        if not s.name.startswith("_") and (not wanted or s.stem in wanted)
     )
 
     probed = [(s, *supports_smoke(s)) for s in scripts]

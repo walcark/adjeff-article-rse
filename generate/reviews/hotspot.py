@@ -1,12 +1,9 @@
-"""What a Lambertian surface costs, on three real ones (answer T1).
+"""The cost of a Lambertian surface assumption on three non-Lambertian sites.
 
-The King kernel of the article is fitted on Lambertian landscapes, then
-applied unchanged to scenes simulated with a Ross-Li BRDF from MODIS
-MCD43A1.  Its error against the Lambertian reference is what the
-assumption costs.
-
-The three sites sit on either side of Lambertian, and all three keep
-under 1 % of their upward flux where the Ross-Li fit turns negative:
+The King kernel of the article is fitted on Lambertian landscapes, then applied
+unchanged to scenes simulated with a Ross-Li BRDF from MODIS MCD43A1. The three
+sites sit on either side of Lambertian, and all three keep under 1 % of their
+upward flux where the Ross-Li fit turns negative:
 
     site               a       BRF negative   negative flux
     skukuza-savanna    0.985   83 deg         0.79 %
@@ -15,17 +12,6 @@ under 1 % of their upward flux where the Ross-Li fit turns negative:
 
 ``a = albedo / BRF(view)`` is one for a Lambertian surface, below one
 when the surface is brighter towards the sensor than towards the sky.
-
-Three sun angles are run, which is what settles the reading: the cost
-follows the sign of ``a - 1``, not its size.  Konza departs nearly four
-times further than Skukuza and degrades four times less.
-
-``disk1`` and ``disk5`` are reported and ignored: their error is the
-edge the deconvolution cannot resolve, twenty times the adjacency
-error, and it tells the surfaces apart not at all.  See ``UNINFORMATIVE``.
-
-Outputs carry the geometry and the clamp mode in their names, so runs
-do not overwrite one another.
 
 Usage
 -----
@@ -97,8 +83,8 @@ OUTPUT = REPO_ROOT / "results" / "tables"
 
 
 def load_ensemble(args: argparse.Namespace) -> pd.DataFrame:
-    """    Return the MCD43A1 coefficients, from the CSV or from AppEEARS.
-    
+    """Return the MCD43A1 coefficients, from the CSV or from AppEEARS.
+
     `inputs/modis/mcd43a1_sites.csv` is versioned, so a fresh clone needs no
     Earthdata account.  Any CSV with `site`, `f_iso`, `f_geo` and `f_vol`
     does; `--refresh-sites` fetches and overwrites it.
@@ -148,13 +134,13 @@ def _fetch_ensemble(args: argparse.Namespace) -> pd.DataFrame:
 
 @contextlib.contextmanager
 def rtls_surface(k1p: float, k2p: float) -> Iterator[None]:
-    """    Make ``SurfaceFactory.surface`` return an ``RTLSSurface``.
-    
+    """Make ``SurfaceFactory.surface`` return an ``RTLSSurface``.
+
     ``k0`` comes from the landscape rather than being fixed, because Smart-G
     applies the BRDF factor to the whole ``ENV=2`` expression::
-    
+
         weight *= BRDF * (gauss * (alb_surface - alb_env) + alb_env)
-    
+
     Both albedos must therefore already carry the ``1 / rtls_shape``
     normalisation, which :func:`scaled_landscape` does, or a flat field
     picks up a spurious Gaussian modulation.
@@ -185,8 +171,8 @@ def train(
     band: SensorBand,
     run: RunConfig,
 ) -> tuple[xr.DataArray, dict[str, float]]:
-    """    Fit one King PSF over the whole training set.
-    
+    """Fit one King PSF over the whole training set.
+
     One kernel for the six landscapes, not one each: the point is to apply
     it unchanged to surfaces it was never trained for.
     """
@@ -463,8 +449,8 @@ def report(
     frame: pd.DataFrame,
     path: Path,
 ) -> pd.DataFrame:
-    """    Assemble, print and write the error table.
-    
+    """Assemble, print and write the error table.
+
     The Lambertian scene has no BRDF arm: assuming the surface it actually
     has *is* the Lambertian assumption.
     """
@@ -566,8 +552,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def check_band_agrees(wl_nm: float, modis_band: int) -> None:
-    """    Refuse to run when the simulation and the BRDF fit disagree on colour.
-    
+    """Refuse to run when the simulation and the BRDF fit disagree on colour.
+
     The Ross-Li weights are per band, and so is the skylight fraction.
     Reading them on one band and simulating on another is silent: a desert
     is far brighter at 858 than at 665 nm, and nothing downstream says so.
@@ -588,8 +574,8 @@ def check_band_agrees(wl_nm: float, modis_band: int) -> None:
 
 
 def check_clamp_agrees(requested: bool) -> None:
-    """    Refuse to run when Python and the CUDA kernel disagree.
-    
+    """Refuse to run when Python and the CUDA kernel disagree.
+
     A mismatch gives no error and a plausible number, the correction being
     judged against a truth simulated for another surface.  It is the one
     failure this study cannot see in its own output.

@@ -1,25 +1,7 @@
-"""What a wrong AOT costs the retrieved reflectance.
+"""The cost of a wrong AOT for the retrieved reflectance.
 
 The correction uses one tile-mean AOT where the true one varies. This
 measures the surface reflectance error a gap of +/-0.2 leaves behind.
-
-That single estimate feeds both the 5S scalar terms and the shape of the
-kernel, so the error is split in three, from the same simulations:
-
-  - ``eps_total``   both are wrong.  The operational case.
-  - ``eps_scalar``  only the scalar terms are.  Ordinary atmospheric
-                    correction error, outside this article.
-  - ``eps_psf``     only the kernel is.  What a single tile-averaged
-                    kernel costs, which is the question.
-
-Two columns frame them: ``no_adj_corr``, no adjacency correction at all,
-and ``matched``, nothing wrong and therefore the best reachable. Reading
-``eps_psf`` against those two is what answers the question, since the
-raw RMSE grows with the aerosol load on its own.
-
-Errors are radial RMSE over the six landscapes of section 2.3.1, as in
-tables 2 and 3. Those span ``rho_s`` in [0, 1], so the values read
-directly as surface reflectance.
 
 Usage
 -----
@@ -89,11 +71,9 @@ def parse_species(text: str) -> dict[str, float]:
     return mix
 
 
-def build_landscapes(
-    band: SensorBand, res_km: float, n: int
-) -> list[ImageDict]:
-    """    Return the six training landscapes of section 2.3.1.
-    
+def build_landscapes(band: SensorBand, res_km: float, n: int) -> list[ImageDict]:
+    """Return the six training landscapes of section 2.3.1.
+
     Gaussians of sigma 1, 5 and 50 km, then disks of radius 1, 5 and 50 km,
     all spanning rho_s in [0, 1].
     """
@@ -103,15 +83,9 @@ def build_landscapes(
     return gauss + disks
 
 
+def at_aot(obj: xr.Dataset | xr.DataArray, aot: float) -> xr.Dataset | xr.DataArray:
+    """Return *obj* at one aerosol load, without its unswept dimensions.
 
-
-
-
-def at_aot(
-    obj: xr.Dataset | xr.DataArray, aot: float
-) -> xr.Dataset | xr.DataArray:
-    """    Return *obj* at one aerosol load, without its unswept dimensions.
-    
     The aot label is dropped on purpose: one correction here mixes the TOA
     reflectance at one load with the scalar terms at another and the kernel
     at a third, and three conflicting labels cannot be combined.
@@ -156,7 +130,9 @@ def evaluate_band(
                 )
                 acc[name] += rmse(est, truth, mask=unif, radial=True, device=device)
                 if name == "matched":
-                    acc["no_adj_corr"] += rmse(unif, truth, mask=unif, radial=True, device=device)
+                    acc["no_adj_corr"] += rmse(
+                        unif, truth, mask=unif, radial=True, device=device
+                    )
 
         rows.append(
             {
@@ -200,9 +176,7 @@ def run_band(
     )
 
     scenes = build_landscapes(band, run.res_km, run.n)
-    scenes = run_forward_pipeline(
-        scenes, **cfg, nr=args.nr, n_ph=run.n_ph, cache=cache
-    )
+    scenes = run_forward_pipeline(scenes, **cfg, nr=args.nr, n_ph=run.n_ph, cache=cache)
 
     model = make_model(
         Unif2Surface,

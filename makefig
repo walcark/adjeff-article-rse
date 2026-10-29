@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Generate the figures of Article 1.  A target is the printed figure number.
+# Generate the figures of Article 1. A target is the printed figure number.
 #
 #   bash makefig                     # every target of ALL_FIGURES
 #   bash makefig figure5             # one of them
 #
 # figure1, figure4, figure16, figure18 and figure19 are built outside this
-# repository.  elevation_low_aot is not a figure of the article.
+# repository. elevation_low_aot is not a figure of the article.
 
 set -euo pipefail
 

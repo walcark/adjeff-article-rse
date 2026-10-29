@@ -1,21 +1,19 @@
 """The Ross-Thick Li-Sparse BRDF, as Smart-G's CUDA kernel computes it.
 
-MODIS distributes, per pixel and per band, three weights of the
-decomposition ``rho = f_iso + f_geo F1 + f_vol F2``.  `device.cu`
-consumes them relative to the isotropic one, ``k1p = f_geo / f_iso`` and
-``k2p = f_vol / f_iso``, and this mirrors it so that the Python side and
-the Monte-Carlo kernel share one convention.  The surface reflectance is
-``k0 * rtls_shape(...)``.
+MODIS distributes, per pixel and per band, three weights of the decomposition
+``rho = f_iso + f_geo F1 + f_vol F2``. `device.cu` consumes them relative to
+the isotropic one, ``k1p = f_geo / f_iso`` and ``k2p = f_vol / f_iso``, and
+this mirrors it so that the Python side and the Monte-Carlo kernel share one
+convention. The surface reflectance is ``k0 * rtls_shape(...)``.
 
-The Li-Sparse crown shape is MODIS's, ``b/r = 1`` and ``h/b = 2``, which
-is why no shape ratio appears and the zenith angles are used unmodified.
-Changing it would break the meaning of the distributed coefficients.
+The Li-Sparse crown shape is MODIS's, ``b/r = 1`` and ``h/b = 2``, which is why
+no shape ratio appears and the zenith angles are used unmodified. Changing it
+would break the meaning of the distributed coefficients.
 
-The fit is not constrained positive and goes below zero at grazing view
-for an anisotropic surface. `shape_of` can hold it at zero, which
-Smart-G can be made to do too, see ``tools/clamp_brdf.py``: the two
-must agree, or a correction is judged against a truth simulated for
-another surface.
+The fit is not constrained positive and goes below zero at grazing view for an
+anisotropic surface. `shape_of` can hold it at zero, which Smart-G can be made
+to do too, see ``tools/clamp_brdf.py``: the two must agree, or a correction is
+judged against a truth simulated for another surface.
 """
 
 from __future__ import annotations

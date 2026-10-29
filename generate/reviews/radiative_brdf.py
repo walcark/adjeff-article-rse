@@ -1,20 +1,4 @@
-"""What a Lambertian surface costs on ``tdif_up`` and ``sph_alb``.
-
-Answer T1 applies a kernel fitted on Lambertian landscapes to scenes
-simulated with a Ross-Li BRDF. Two of the six radiative terms depend on
-the surface and were left Lambertian anyway; the four others never touch
-the ground. This measures how wrong that is, before any kernel is
-involved.
-
-Both terms are swept over the aerosol load, for every sun angle and
-every surface, once through the Lambertian samplers and once through
-their BRDF variants. Each surface is rescaled so the sensor sees the
-same reflectance from all four: only what leaves towards the sky
-differs.
-
-The Lambertian case runs twice, through both sampler families, the
-second at ``k1p = k2p = 0``. They must agree, and their gap is the
-Monte-Carlo floor every other number has to clear.
+"""The cost of assuming a Lambertian surface for ``tdif_up`` and ``sph_alb``.
 
 Usage
 -----
@@ -22,6 +6,7 @@ python radiative_brdf.py --smoke                # a few minutes
 python radiative_brdf.py                        # sza 20, 40, 60
 python radiative_brdf.py --sza 40 --no-clamp
 """
+
 from __future__ import annotations
 
 import argparse
@@ -29,8 +14,6 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-
 from adjeff.atmosphere import AtmoConfig, GeoConfig, SpectralConfig
 from adjeff.core import ImageDict, SensorBand
 from adjeff.modules.samplers import (
@@ -43,13 +26,14 @@ from adjeff.modules.samplers import (
     TdirUpSampler,
 )
 from adjeff.utils import CacheStore
+from hotspot import CHOSEN
+from hotspot_brdf import LABELS, ORDER, load
 
 from adjeff_article_1.rossli import shape_of
 from adjeff_article_1.runconfig import REPO_ROOT, band_from_wl
-from adjeff_article_1.utils import get_cache_path
 from adjeff_article_1.style import font, style_axes, use_article_style
-from hotspot import CHOSEN
-from hotspot_brdf import LABELS, ORDER, load
+from adjeff_article_1.utils import get_cache_path
+
 OUTPUT = REPO_ROOT / "results" / "tables"
 
 #: The two quantities that depend on the surface, and how they read.
@@ -115,8 +99,8 @@ def sample_lambertian(
     args: argparse.Namespace,
     cache: CacheStore,
 ) -> dict[str, np.ndarray]:
-    """    Return the same two quantities from the Lambertian samplers.
-    
+    """Return the same two quantities from the Lambertian samplers.
+
     The reference, which the BRDF path at ``k1p = k2p = 0`` has to match.
     """
     common = dict(
@@ -184,8 +168,8 @@ def _rows(sza, aot, surface, quantity, values) -> list[dict]:
 
 
 def draw(table: pd.DataFrame, args: argparse.Namespace, path: Path) -> None:
-    """    Draw one column per quantity, one row per sun angle.
-    
+    """Draw one column per quantity, one row per sun angle.
+
     The two quantities are on different scales, so each gets a column rather
     than a second y-axis.
     """
@@ -227,9 +211,7 @@ def draw(table: pd.DataFrame, args: argparse.Namespace, path: Path) -> None:
             if row == len(angles) - 1:
                 ax.set_xlabel(r"$\tau_a$", fontsize=font(11 / 12))
             if column == 0:
-                ax.set_ylabel(
-                    rf"$\theta_s = {sza:g}^\circ$", fontsize=font(11 / 12)
-                )
+                ax.set_ylabel(rf"$\theta_s = {sza:g}^\circ$", fontsize=font(11 / 12))
             style_axes(ax)
 
     lambertian = plt.Line2D(
@@ -254,10 +236,9 @@ def report(table: pd.DataFrame) -> None:
     wide = table.pivot_table(
         index=["sza", "quantity", "aot"], columns="surface", values="value"
     )
-    floor = (
-        (wide[LAMBERTIAN] - wide["lambertian-reference"]).abs()
-        / wide["lambertian-reference"]
-    )
+    floor = (wide[LAMBERTIAN] - wide["lambertian-reference"]).abs() / wide[
+        "lambertian-reference"
+    ]
     print("\n=== Monte-Carlo floor, lambertian samplers vs BRDF path at k1p=k2p=0")
     print((100.0 * floor).groupby(level=["sza", "quantity"]).max().round(2))
 
@@ -286,22 +267,28 @@ def main() -> None:
     parser.add_argument("--n-aot", type=int, default=8)
     parser.add_argument("--n-ph", type=int, default=int(3e7))
     parser.add_argument(
-        "--clamp", action=argparse.BooleanOptionalAction, default=True,
+        "--clamp",
+        action=argparse.BooleanOptionalAction,
+        default=True,
         help="clamp the Ross-Li shape at zero, as hotspot.py does",
     )
-    parser.add_argument("--sites-csv", type=Path,
-                        default=OUTPUT / "hotspot_mcd43a1_sites.csv")
+    parser.add_argument(
+        "--sites-csv", type=Path, default=OUTPUT / "hotspot_mcd43a1_sites.csv"
+    )
     # Outside the repository: a Smart-G cache is reproducible and runs to
     # gigabytes, so it has no business under version control.
     parser.add_argument(
         "--cache-dir", type=str, default=str(get_cache_path() / "review")
     )
     parser.add_argument(
-        "--out", type=Path, default=None,
+        "--out",
+        type=Path,
+        default=None,
         help="PNG path; defaults to results/tables/radiative_brdf_<clamp>.png",
     )
     parser.add_argument(
-        "--smoke", action="store_true",
+        "--smoke",
+        action="store_true",
         help="a coarse sweep at a low photon count, to check the chain",
     )
     args = parser.parse_args()
