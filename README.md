@@ -75,7 +75,7 @@ install_env             installs pixi and the environment
 
 **Nothing is downloaded:** `inputs/smartg_auxdata/` contains a minimal subset of the [Smart-G dataset](https://github.com/hygeos/smartg). Additional aerosol tables for the CAMS aerosols were generated with the MOPSMAP Fortran code through [pymopsmap](https://github.com/walcark/pymopsmap). The script `generate/sedoo/build_cams_auxdata.py` documents the grid that they are tabulated on.
 
-The Smart-G cache sits outside the repository, under `~/.cache/adjeff-article/`: it runs to gigabytes and has to survive a reboot. [docs/MAINTAINING.md](docs/MAINTAINING.md) says how to move it, and covers the rest of what reproducing a figure does not need.
+The Smart-G cache sits outside the repository, under `~/.cache/adjeff-article/`: it runs to gigabytes and has to survive a reboot. 
 
 ## License
 
