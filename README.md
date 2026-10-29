@@ -1,6 +1,6 @@
 # Adjeff - article companion scripts
 
-This reposity contains most of the scripts used to generate the results from the article:
+This reposity contains most of the scripts used to generate the results from the [article](https://www.sciencedirect.com/science/article/pii/S0034425726005079):
 
 > K. Walcarius, M. Moulana, D. Ramon, M. Lassalle, J. Colin and O. Hagolle, *A Revised Model for Atmospheric Adjacency Effect Correction in Optical Satellite Earth Observation Images*, Remote Sensing of Environment, submitted.
 
